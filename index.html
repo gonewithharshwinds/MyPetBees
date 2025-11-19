@@ -79,7 +79,7 @@
             top: 90px;
             right: 24px;
             bottom: 24px;
-            width: 360px; /* Widened for graph */
+            width: 360px; 
             background: var(--panel-bg);
             border: 1px solid var(--border);
             border-radius: 24px;
@@ -257,6 +257,9 @@
                     <div class="control-group">
                         <label>Worker Quota (Trips/Day) <span class="val-display" id="val-quota">5</span></label>
                         <input id="inp-quota" type="range" min="1" max="20" value="5" step="1" oninput="updateQuota(this.value)">
+                        <div style="font-size:11px; color:var(--danger); margin-top:6px; font-style:italic;">
+                            High quotas risk death by fatigue.
+                        </div>
                     </div>
                 </div>
             </div>
@@ -404,7 +407,7 @@
                 this.health = 1.0;
                 this.tripsToday = 0;
                 this.carryingWarning = null; 
-                this.waterTimer = 0; // Exhaustion tracker
+                this.waterTimer = 0; 
             }
 
             update(dt) {
@@ -415,11 +418,11 @@
                 const currentHex = this.world.getHexAt(this.pos.x, this.pos.y);
                 if (currentHex && currentHex.type === 'WATER') {
                     this.waterTimer += dt;
-                    if (this.waterTimer > 600) { // Approx 10 seconds real time / distance check
-                         this.takeDamage(10, "Exhaustion"); // Instant drown
+                    if (this.waterTimer > 600) { 
+                         this.takeDamage(10, "Drowned"); 
                     }
                 } else {
-                    this.waterTimer = Math.max(0, this.waterTimer - dt * 2); // Recover over land
+                    this.waterTimer = Math.max(0, this.waterTimer - dt * 2);
                 }
 
                 const temp = this.world.temperature;
@@ -433,6 +436,7 @@
                 if (temp > 30) moveSpeed *= 1.2;
                 if (this.world.weather === 'rain') moveSpeed *= 0.3;
 
+                // State: Reporting Warning
                 if (this.state === 'REPORT_WARNING') {
                     if (this.moveTo(this.colony.getCenter(), moveSpeed * 1.5)) { 
                         this.colony.learnPattern(this.carryingWarning.color, -50); 
@@ -441,7 +445,27 @@
                     }
                     return; 
                 }
+                
+                // State: RAID
+                if (this.state === 'RAID') {
+                    if (!this.target || this.target.colonyId === -1) {
+                        // Find enemy colony
+                        const enemy = this.world.colonies.find(c => c.id !== this.colony.id);
+                        if (enemy) {
+                            this.target = { x: enemy.getCenter().x, y: enemy.getCenter().y };
+                        } else {
+                            this.state = 'IDLE'; // No enemies, go back
+                        }
+                    }
+                    
+                    if (this.target) {
+                        this.moveTo(this.target, moveSpeed);
+                        this.checkCombat(); // Aggressively check combat
+                    }
+                    return;
+                }
 
+                // Witness Death
                 if (Rand.chance(0.1)) { 
                     const nearbyDeath = this.world.deadBees.find(d => Math.hypot(d.x - this.pos.x, d.y - this.pos.y) < 40);
                     if (nearbyDeath) {
@@ -458,6 +482,11 @@
                 } else {
                     if (this.world.time < 100 && this.tripsToday > 0) this.tripsToday = 0;
                     if (this.tripsToday >= this.colony.workQuota && this.state !== 'RETURN') this.state = 'RETURN';
+                }
+                
+                // Soldier Logic Switch
+                if (this.type === 'SOLDIER' && this.colony.policy === 'AGGRESSIVE' && this.state === 'PATROL') {
+                    if (Rand.chance(0.01)) this.state = 'RAID';
                 }
 
                 switch(this.state) {
@@ -481,6 +510,7 @@
                                 this.state = 'FORAGE';
                             }
                         }
+                        this.checkCombat(); // Passive check
                         break;
                     case 'FORAGE':
                         if (!this.target || this.target.nectar <= 0) { this.state = 'SCOUT'; return; }
@@ -504,6 +534,17 @@
                             this.colony.storeFood(this.inventory);
                             this.inventory = 0;
                             this.tripsToday++;
+                            
+                            // Fatigue / Overwork Check
+                            if (this.tripsToday > this.colony.workQuota) {
+                                const excess = this.tripsToday - this.colony.workQuota;
+                                // Probability of death scales with excess work
+                                if (Rand.chance(excess * 0.05)) {
+                                    this.die("Overwork");
+                                    return;
+                                }
+                            }
+                            
                             if (!isDay || this.tripsToday >= this.colony.workQuota) this.state = 'SLEEP';
                             else this.state = 'IDLE';
                         }
@@ -513,9 +554,37 @@
                         const t = Date.now() * 0.0005;
                         const orbit = { x: center.x + Math.cos(t+this.age)*50, y: center.y + Math.sin(t+this.age)*50 };
                         this.moveTo(orbit, moveSpeed*0.6);
+                        this.checkCombat();
                         break;
                 }
                 if (this.vel.x !== 0) this.angle = Math.atan2(this.vel.y, this.vel.x);
+            }
+            
+            checkCombat() {
+                // Optimized combat check
+                // If we are soldiers or raiding, check more aggressively
+                const range = (this.state === 'RAID' || this.state === 'PATROL') ? 40 : 15;
+                
+                if (Rand.chance(0.2)) { // 20% check per frame to save perf
+                    for (let other of this.world.bees) {
+                        if (other.colony.id !== this.colony.id && other.health > 0) {
+                            if (this.distTo(other.pos) < range) {
+                                // Combat Logic
+                                // 1. Home Turf Bonus
+                                const myDist = this.distTo(this.colony.getCenter());
+                                let myBonus = myDist < 100 ? 1.5 : 1.0;
+                                
+                                // 2. Aggression Stat
+                                const myDmg = 0.2 * this.aggression * myBonus;
+                                const theirDmg = 0.2 * other.aggression; // Assuming neutral ground for them for simplicity, could check their home too
+                                
+                                other.takeDamage(myDmg, "War");
+                                this.takeDamage(theirDmg, "War");
+                                return; // Fight one at a time
+                            }
+                        }
+                    }
+                }
             }
 
             takeDamage(amt, reason) { this.health -= amt; if (this.health <= 0) this.die(reason); }
@@ -568,8 +637,8 @@
                 
                 // Detailed Stats
                 this.stats = {
-                    deaths: { 'Old Age': 0, 'War': 0, 'Poison': 0, 'Exhaustion': 0, 'Unknown': 0 },
-                    popHistory: [] // For projection
+                    deaths: { 'Old Age': 0, 'War': 0, 'Poison': 0, 'Overwork': 0, 'Drowned': 0, 'Unknown': 0 },
+                    popHistory: [] 
                 };
             }
             
@@ -578,7 +647,10 @@
                     this.poisonDeaths++;
                     if (!this.avoidPoison && this.poisonDeaths >= CONFIG.POISON_LEARN_THRESHOLD) this.avoidPoison = true;
                 }
-                const key = reason === 'Freeze' || reason === 'Heat' ? 'Old Age' : reason; // Group temp deaths? or keep separate. Let's group into environmental or old age for simplicity or add key.
+                let key = reason;
+                if (reason === 'Freeze' || reason === 'Heat') key = 'Old Age';
+                if (reason === 'Fatigue') key = 'Overwork';
+                
                 if(this.stats.deaths[key] !== undefined) this.stats.deaths[key]++;
                 else this.stats.deaths['Unknown']++;
             }
@@ -983,7 +1055,8 @@
                             <div class="stat-item"><span class="stat-label">Old Age</span><span class="stat-val">${ent.stats.deaths['Old Age']}</span></div>
                             <div class="stat-item"><span class="stat-label">War</span><span class="stat-val">${ent.stats.deaths['War']}</span></div>
                             <div class="stat-item"><span class="stat-label">Poison</span><span class="stat-val">${ent.stats.deaths['Poison']}</span></div>
-                            <div class="stat-item"><span class="stat-label">Fatigue</span><span class="stat-val">${ent.stats.deaths['Exhaustion']}</span></div>
+                            <div class="stat-item"><span class="stat-label">Overwork</span><span class="stat-val">${ent.stats.deaths['Overwork']}</span></div>
+                             <div class="stat-item"><span class="stat-label">Drowned</span><span class="stat-val">${ent.stats.deaths['Drowned']}</span></div>
                         </div>
                     </div>
                     
