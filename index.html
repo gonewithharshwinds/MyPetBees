@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EvoBee: Ecosystem Simulator</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #121212;
+            --panel-bg: rgba(30, 30, 30, 0.95);
+            --accent: #fdd835;
+            --text-main: #ffffff;
+            --text-sub: #b0b0b0;
+            --border: rgba(255, 255, 255, 0.1);
+            --glass: rgba(255, 255, 255, 0.08);
+            --glass-hover: rgba(255, 255, 255, 0.15);
+            --danger: #ef5350;
+            --success: #66bb6a;
+            --info: #29b6f6;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            font-family: 'Inter', sans-serif;
+            color: var(--text-main);
+            font-size: 14px;
+        }
+
+        canvas {
+            display: block;
+            cursor: crosshair;
+        }
+
+        /* --- Top Navigation Bar --- */
+        #top-bar {
+            position: absolute;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 6px;
+            display: flex;
+            gap: 8px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+            backdrop-filter: blur(16px);
+            z-index: 1000;
+        }
+
+        .nav-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-sub);
+            padding: 10px 20px;
+            border-radius: 18px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+        .nav-btn:hover { background: var(--glass); color: var(--text-main); }
+        .nav-btn.active { background: var(--accent); color: #121212; box-shadow: 0 4px 12px rgba(253, 216, 53, 0.3); }
+        .nav-btn .material-symbols-rounded { font-size: 20px; }
+
+        /* --- Right Context Panel --- */
+        #context-panel {
+            position: absolute;
+            top: 90px;
+            right: 24px;
+            bottom: 24px;
+            width: 340px;
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: -8px 8px 30px rgba(0,0,0,0.4);
+            backdrop-filter: blur(16px);
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(0,0,0,0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .panel-title { font-size: 16px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
+        .panel-content { flex: 1; overflow-y: auto; padding: 20px; }
+
+        /* Tab Logic */
+        .tab-content { display: none; animation: fadeIn 0.3s ease-out; }
+        .tab-content.active { display: flex; flex-direction: column; gap: 20px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- UI Components --- */
+        .tool-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .tool-btn {
+            background: var(--glass); border: 1px solid var(--border); color: var(--text-sub);
+            padding: 14px; border-radius: 12px; cursor: pointer;
+            display: flex; flex-direction: column; align-items: center; gap: 8px;
+            font-size: 12px; font-weight: 500; transition: all 0.2s;
+        }
+        .tool-btn:hover { background: var(--glass-hover); color: var(--text-main); transform: translateY(-1px); }
+        .tool-btn.active { background: var(--accent); color: #121212; border-color: var(--accent); font-weight: 700; }
+        .tool-btn .material-symbols-rounded { font-size: 24px; }
+        
+        .control-group { background: rgba(0,0,0,0.2); padding: 16px; border-radius: 16px; border: 1px solid var(--border); }
+        label { font-size: 12px; color: var(--text-sub); display: flex; justify-content: space-between; margin-bottom: 10px; font-weight: 600; }
+        .val-display { color: var(--accent); font-family: monospace; }
+
+        /* Sliders */
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; margin-bottom: 8px; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: var(--accent); margin-top: -5px; cursor: pointer; }
+        
+        /* Status Badges */
+        .badge { padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; background: #333; display: inline-block;}
+        .badge.peace { background: rgba(76, 175, 80, 0.2); color: #81c784; border: 1px solid rgba(76, 175, 80, 0.3); }
+        .badge.war { background: rgba(239, 83, 80, 0.2); color: #e57373; border: 1px solid rgba(239, 83, 80, 0.3); }
+        .badge.turtle { background: rgba(41, 182, 246, 0.2); color: #4fc3f7; border: 1px solid rgba(41, 182, 246, 0.3); }
+        
+        /* Learning Visuals */
+        .brain-row { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid var(--border); font-size: 12px; }
+        .color-swatch { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 6px; border: 1px solid #fff; }
+        .score-bar-bg { width: 60px; height: 4px; background: #333; border-radius: 2px; overflow: hidden; }
+        .score-bar-fill { height: 100%; background: var(--success); }
+        .score-bar-fill.neg { background: var(--danger); }
+
+        /* Status Bar */
+        .status-bar { padding: 12px 20px; background: rgba(0,0,0,0.3); border-top: 1px solid var(--border); font-size: 11px; color: var(--text-sub); display: flex; justify-content: space-between; align-items: center; font-family: monospace; flex-shrink: 0; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #555; display: inline-block; margin-right: 6px; }
+        .status-dot.active { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+        
+        .ranking-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .ranking-table th { text-align: left; color: var(--text-sub); padding: 8px; border-bottom: 1px solid var(--border); font-weight: 600;}
+        .ranking-table td { padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    </style>
+</head>
+<body>
+
+    <canvas id="simCanvas"></canvas>
+
+    <!-- Top Navigation -->
+    <nav id="top-bar">
+        <button class="nav-btn" onclick="switchTab('climate')"><span class="material-symbols-rounded">thermostat</span> Climate</button>
+        <button class="nav-btn" onclick="switchTab('god')"><span class="material-symbols-rounded">construction</span> Tools</button>
+        <button class="nav-btn" onclick="switchTab('management')"><span class="material-symbols-rounded">tune</span> Manage</button>
+        <button class="nav-btn" onclick="switchTab('stats')"><span class="material-symbols-rounded">leaderboard</span> Stats</button>
+        <button class="nav-btn active" onclick="switchTab('inspector')"><span class="material-symbols-rounded">search</span> Inspect</button>
+        <button class="nav-btn" onclick="switchTab('system')"><span class="material-symbols-rounded">settings</span> System</button>
+    </nav>
+
+    <!-- Context Panel -->
+    <aside id="context-panel">
+        <div class="panel-header">
+            <div class="panel-title" id="panel-title"><span class="material-symbols-rounded">search</span> Inspector</div>
+            <div id="time-display" style="font-size:12px; color:var(--text-sub); font-weight:500;">Day 1</div>
+        </div>
+        
+        <div class="panel-content">
+
+            <!-- TAB: CLIMATE -->
+            <div id="tab-climate" class="tab-content">
+                <div class="control-group" style="text-align:center">
+                    <span class="material-symbols-rounded" style="font-size:32px; color:var(--accent);" id="season-icon">local_florist</span>
+                    <div style="font-weight:bold; margin-top:5px;" id="season-name">Spring</div>
+                    <div style="font-size:11px; color:var(--text-sub);" id="season-desc">Fast Growth</div>
+                </div>
+                <div class="control-group">
+                    <label>Temperature <span class="val-display" id="val-temp">25°C</span></label>
+                    <input type="range" min="0" max="45" value="25" oninput="updateClimate('temp', this.value)">
+                </div>
+                <div class="control-group">
+                    <label>Wind Intensity <span class="val-display" id="val-wind">0</span></label>
+                    <input type="range" min="0" max="10" value="0" oninput="updateClimate('wind', this.value)">
+                </div>
+            </div>
+
+            <!-- TAB: GOD TOOLS -->
+            <div id="tab-god" class="tab-content">
+                <div class="tool-grid">
+                    <button class="tool-btn active" data-tool="cursor" onclick="setTool('cursor')">
+                        <span class="material-symbols-rounded">near_me</span> Select
+                    </button>
+                    <button class="tool-btn" data-tool="flower" onclick="setTool('flower')">
+                        <span class="material-symbols-rounded">local_florist</span> Flower
+                    </button>
+                    <button class="tool-btn" data-tool="poison" onclick="setTool('poison')">
+                        <span class="material-symbols-rounded" style="color:#9c27b0">skull</span> Poison
+                    </button>
+                    <button class="tool-btn" data-tool="colony" onclick="setTool('colony')">
+                        <span class="material-symbols-rounded" style="color:var(--accent)">emoji_nature</span> Colony
+                    </button>
+                    <button class="tool-btn" data-tool="rain" onclick="setTool('rain')">
+                        <span class="material-symbols-rounded" style="color:#4fc3f7">water_drop</span> Grow
+                    </button>
+                    <button class="tool-btn" data-tool="fire" onclick="setTool('fire')">
+                        <span class="material-symbols-rounded" style="color:#ef5350">local_fire_department</span> Purge
+                    </button>
+                </div>
+                <div style="margin-top:10px; font-size:11px; color:#666; text-align:center">Poison flowers are Purple (#9c27b0).</div>
+            </div>
+
+            <!-- TAB: MANAGEMENT -->
+            <div id="tab-management" class="tab-content">
+                <div id="mgmt-empty" style="text-align:center; padding:20px; color:#666;">Select a Colony first.</div>
+                <div id="mgmt-controls" style="display:none;">
+                    <div class="control-group">
+                        <label style="color:var(--accent);">🧬 Genetics</label>
+                        <label>Aggression <span class="val-display" id="val-agg">1.0</span></label>
+                        <input id="inp-agg" type="range" min="0.5" max="2.5" step="0.1" oninput="updateGene('aggression', this.value)">
+                        <label>Fertility <span class="val-display" id="val-fert">1.0</span></label>
+                        <input id="inp-fert" type="range" min="0.5" max="2.5" step="0.1" oninput="updateGene('fertility', this.value)">
+                        <label>Speed <span class="val-display" id="val-spd">1.0</span></label>
+                        <input id="inp-spd" type="range" min="0.5" max="2.0" step="0.1" oninput="updateGene('speedMult', this.value)">
+                    </div>
+                    <div class="control-group">
+                        <label>Policy</label>
+                        <div class="tool-grid" style="grid-template-columns: 1fr 1fr 1fr">
+                            <button class="tool-btn" onclick="setPolicy('PEACEFUL')">Peace</button>
+                            <button class="tool-btn" onclick="setPolicy('AGGRESSIVE')">War</button>
+                            <button class="tool-btn" onclick="setPolicy('TURTLE')">Turtle</button>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label>Worker Quota (Trips/Day) <span class="val-display" id="val-quota">5</span></label>
+                        <input id="inp-quota" type="range" min="1" max="20" value="5" step="1" oninput="updateQuota(this.value)">
+                        <div style="font-size:11px; color:var(--danger); margin-top:6px; font-style:italic;">
+                            Warning: High quotas reduce lifespan significantly.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: STATS -->
+            <div id="tab-stats" class="tab-content">
+                <table class="ranking-table">
+                    <thead><tr><th>Colony</th><th>Pop</th><th>Food</th><th>Gen</th></tr></thead>
+                    <tbody id="leaderboard-body"></tbody>
+                </table>
+            </div>
+
+            <!-- TAB: INSPECTOR -->
+            <div id="tab-inspector" class="tab-content active">
+                <div id="inspector-content" style="text-align:center; padding:40px 20px; color:#666;">
+                    <span class="material-symbols-rounded" style="font-size:32px; display:block; margin-bottom:10px;">search</span>
+                    Nothing selected.<br>Click a Bee or Hive.
+                </div>
+            </div>
+
+            <!-- TAB: SYSTEM -->
+            <div id="tab-system" class="tab-content">
+                <div class="control-group">
+                    <button class="tool-btn" style="width:100%" onclick="toggleHeatmap()">Toggle Heatmap</button>
+                    <button class="tool-btn" style="width:100%; margin-top:10px;" onclick="world.save()">Save State</button>
+                    <button class="tool-btn" style="width:100%; margin-top:10px;" onclick="world.load()">Load State</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="status-bar">
+            <div><span class="status-dot active"></span> <span id="status-tool">Cursor</span></div>
+            <div id="status-selection" style="color:var(--accent)">None</div>
+        </div>
+    </aside>
+
+    <script>
+        const CONFIG = {
+            HEX_SIZE: 16, DAY_LENGTH: 2000, BEE_LIFESPAN: 4000,
+            LARVA_COST: 3, SWARM_THRESHOLD_FOOD: 60, SWARM_THRESHOLD_POP: 15, EXPAND_COST: 20,
+            COLORS: {
+                GRASS: ['#2d3a25', '#34422b', '#263020'],
+                SAFE_FLOWERS: ['#e57373', '#64b5f6', '#ffd54f'], // Red, Blue, Yellow
+                POISON: '#9c27b0', // Purple
+                HIVE_STROKE: '#b7950b',
+                HEATMAP_FOOD: 'rgba(76, 175, 80, 0.4)', HEATMAP_DEATH: 'rgba(244, 67, 54, 0.5)'
+            },
+            PALETTES: [
+                { name: "Golden Swarm", color: '#ffca28', secondary: '#ff6f00' },
+                { name: "Azure Wing", color: '#4fc3f7', secondary: '#0277bd' },
+                { name: "Crimson Sting", color: '#ef5350', secondary: '#c62828' },
+                { name: "Emerald Hive", color: '#66bb6a', secondary: '#2e7d32' },
+                { name: "Amethyst Royal", color: '#ab47bc', secondary: '#7b1fa2' }
+            ],
+            SEASONS: [
+                { name: "Spring", icon: "local_florist", growthMod: 1.5, desc: "Fast growth" },
+                { name: "Summer", icon: "sunny", growthMod: 1.0, desc: "Normal growth" },
+                { name: "Autumn", icon: "nature", growthMod: 0.5, desc: "Slow growth" },
+                { name: "Winter", icon: "ac_unit", growthMod: 0.1, desc: "Dormant" }
+            ]
+        };
+
+        const Rand = {
+            float: (min, max) => Math.random() * (max - min) + min,
+            int: (min, max) => Math.floor(Math.random() * (max - min + 1) + min),
+            choice: (arr) => arr[Math.floor(Math.random() * arr.length)],
+            chance: (p) => Math.random() < p
+        };
+
+        // --- CLASSES ---
+        class Hex {
+            constructor(q, r) {
+                this.q = q; this.r = r;
+                this.x = CONFIG.HEX_SIZE * (3/2 * q);
+                this.y = CONFIG.HEX_SIZE * (Math.sqrt(3)/2 * q + Math.sqrt(3) * r);
+                this.type = 'EMPTY'; 
+                this.colonyId = -1;
+                this.nectar = 0; this.maxNectar = 0;
+                this.hiveData = null;
+                this.colorBase = Rand.choice(CONFIG.COLORS.GRASS);
+                this.sizeVar = Rand.float(0.95, 1.05);
+                this.flowerColor = null;
+                this.flowerSize = 0;
+            }
+            setFlower(poison = false) {
+                this.type = poison ? 'POISON' : 'FLOWER';
+                this.flowerColor = poison ? CONFIG.COLORS.POISON : Rand.choice(CONFIG.COLORS.SAFE_FLOWERS);
+                this.maxNectar = Rand.int(30, 80);
+                this.nectar = Rand.int(10, this.maxNectar);
+                this.flowerSize = Rand.float(0.5, 0.8);
+                this.colonyId = -1;
+            }
+            setHive(colonyId) {
+                this.type = 'HIVE'; this.colonyId = colonyId;
+                this.hiveData = { larvae: [], food: 0 }; this.nectar = 0; this.colorBase = '#222';
+            }
+            reset() { this.type = 'EMPTY'; this.colonyId = -1; this.nectar = 0; this.flowerColor = null; }
+            update(dt, isDay, weather, seasonMod) {
+                if ((this.type === 'FLOWER' || this.type === 'POISON') && this.nectar < this.maxNectar) {
+                    let rate = isDay ? 0.01 : 0.001;
+                    if (weather === 'rain') rate *= 4;
+                    rate *= seasonMod;
+                    if (Rand.chance(rate * dt)) this.nectar++;
+                }
+            }
+        }
+
+        class Bee {
+            constructor(world, colony, type = 'WORKER') {
+                this.world = world; this.colony = colony; this.type = type;
+                const spawn = colony.getSpawnPoint();
+                this.pos = { x: spawn.x, y: spawn.y };
+                this.vel = { x: Rand.float(-1,1), y: Rand.float(-1,1) };
+                this.angle = 0;
+                this.genes = colony.genetics;
+                this.age = 0;
+                const workloadPenalty = 1 - ((colony.workQuota - 5) * 0.05);
+                this.maxAge = CONFIG.BEE_LIFESPAN * this.genes.lifespanMult * workloadPenalty * Rand.float(0.8, 1.2);
+                this.speed = (type === 'SOLDIER' ? 1.5 : 2.5) * this.genes.speedMult;
+                this.aggression = this.genes.aggression * (type === 'SOLDIER' ? 2.0 : 1.0);
+                this.state = 'IDLE'; 
+                this.target = null; 
+                this.inventory = 0; 
+                this.health = 1.0;
+                this.tripsToday = 0;
+                this.carryingWarning = null; // If this bee witnessed a death
+            }
+
+            update(dt) {
+                if (this.health <= 0) return;
+                this.age += dt;
+                const temp = this.world.temperature;
+                if (temp < 5) this.takeDamage(0.005 * dt, "Freeze");
+                if (temp > 40) this.takeDamage(0.005 * dt, "Heat");
+                if (this.age > this.maxAge) return this.die("Old Age");
+
+                const isDay = this.world.isDay;
+                let moveSpeed = this.speed;
+                if (temp < 15) moveSpeed *= 0.6;
+                if (temp > 30) moveSpeed *= 1.2;
+                if (this.world.weather === 'rain') moveSpeed *= 0.3;
+
+                // --- High Priority: Reporting Warning ---
+                if (this.state === 'REPORT_WARNING') {
+                    if (this.moveTo(this.colony.getCenter(), moveSpeed * 1.5)) { // Rush home
+                        this.colony.learnPattern(this.carryingWarning.color, -50); // Huge negative reinforcement
+                        this.carryingWarning = null;
+                        this.state = 'IDLE';
+                    }
+                    return; // Skip normal logic
+                }
+
+                // --- Scan for Corpse (Witness Logic) ---
+                if (Rand.chance(0.1)) { // Check every few frames
+                    const nearbyDeath = this.world.deadBees.find(d => Math.hypot(d.x - this.pos.x, d.y - this.pos.y) < 40);
+                    if (nearbyDeath) {
+                        // I see a dead bee! Was it poison?
+                        // Simple logic: If I see a dead bee on a flower, and I don't know it's bad yet
+                        const hex = this.world.getHexAt(nearbyDeath.x, nearbyDeath.y);
+                        if (hex && hex.type === 'POISON') {
+                            this.state = 'REPORT_WARNING';
+                            this.carryingWarning = { color: hex.flowerColor };
+                        }
+                    }
+                }
+
+                // Normal State Machine
+                if (!isDay) {
+                    if (this.state !== 'RETURN' && this.state !== 'SLEEP') this.state = 'RETURN';
+                } else {
+                    if (this.world.time < 100 && this.tripsToday > 0) this.tripsToday = 0;
+                    if (this.tripsToday >= this.colony.workQuota && this.state !== 'RETURN') this.state = 'RETURN';
+                }
+
+                switch(this.state) {
+                    case 'SLEEP':
+                        if (isDay && this.tripsToday < this.colony.workQuota) this.state = 'IDLE';
+                        this.health = Math.min(this.health + 0.001*dt, 1);
+                        break;
+                    case 'IDLE':
+                        this.wander(moveSpeed * 0.5);
+                        if (this.type === 'WORKER') this.state = 'SCOUT';
+                        else if (this.type === 'SOLDIER') this.state = 'PATROL';
+                        break;
+                    case 'SCOUT':
+                        this.wander(moveSpeed);
+                        if (this.colony.policy === 'TURTLE' && this.distTo(this.colony.getCenter()) > 120) this.state = 'RETURN';
+                        
+                        const hex = this.world.getHexAt(this.pos.x, this.pos.y);
+                        if (hex && (hex.type === 'FLOWER' || hex.type === 'POISON') && hex.nectar > 0) {
+                            // INTELLIGENCE CHECK
+                            if (this.colony.isSafe(hex.flowerColor)) {
+                                this.target = hex;
+                                this.state = 'FORAGE';
+                            }
+                        }
+                        break;
+                    case 'FORAGE':
+                        if (!this.target || this.target.nectar <= 0) { this.state = 'SCOUT'; return; }
+                        if (this.moveTo(this.target, moveSpeed)) {
+                            if (this.target.type === 'POISON') {
+                                this.takeDamage(0.5, "Poison"); // High damage
+                            }
+                            
+                            const amt = Math.min(2 - this.inventory, this.target.nectar);
+                            this.target.nectar -= amt;
+                            this.inventory += amt;
+                            
+                            // Positive reinforcement if I survive
+                            if (this.target.type !== 'POISON') {
+                                this.colony.learnPattern(this.target.flowerColor, 1);
+                            }
+
+                            this.world.recordActivity(this.target.x, this.target.y, 'food');
+                            if (this.inventory >= 2) this.state = 'RETURN';
+                            else this.state = 'SCOUT';
+                        }
+                        break;
+                    case 'RETURN':
+                        if (this.moveTo(this.colony.getCenter(), moveSpeed)) {
+                            this.colony.storeFood(this.inventory);
+                            this.inventory = 0;
+                            this.tripsToday++;
+                            if (!isDay || this.tripsToday >= this.colony.workQuota) this.state = 'SLEEP';
+                            else this.state = 'IDLE';
+                        }
+                        break;
+                    case 'PATROL':
+                        const center = this.colony.getCenter();
+                        const t = Date.now() * 0.0005;
+                        const orbit = { x: center.x + Math.cos(t+this.age)*50, y: center.y + Math.sin(t+this.age)*50 };
+                        this.moveTo(orbit, moveSpeed*0.6);
+                        break;
+                }
+                if (this.vel.x !== 0) this.angle = Math.atan2(this.vel.y, this.vel.x);
+            }
+
+            takeDamage(amt, reason) { this.health -= amt; if (this.health <= 0) this.die(reason); }
+            die(reason) { 
+                this.health = 0; 
+                this.world.recordActivity(this.pos.x, this.pos.y, 'death');
+                this.world.addDeadBee(this.pos.x, this.pos.y);
+            }
+            wander(s) { this.vel.x+=Rand.float(-0.3,0.3)+this.world.windX*0.05; this.vel.y+=Rand.float(-0.3,0.3)+this.world.windY*0.05; this.applyVel(s); }
+            moveTo(t, s) {
+                const dx=t.x-this.pos.x, dy=t.y-this.pos.y, d=Math.hypot(dx,dy);
+                if(d<5) return true;
+                this.vel.x+=(dx/d)*0.5 + this.world.windX*0.05; this.vel.y+=(dy/d)*0.5 + this.world.windY*0.05; 
+                this.applyVel(s);
+                return false;
+            }
+            applyVel(limit) {
+                const m=Math.hypot(this.vel.x,this.vel.y);
+                if(m>limit){ this.vel.x=(this.vel.x/m)*limit; this.vel.y=(this.vel.y/m)*limit; }
+                this.pos.x+=this.vel.x; this.pos.y+=this.vel.y;
+            }
+            distTo(p) { return Math.hypot(this.pos.x-p.x, this.pos.y-p.y); }
+        }
+
+        class Colony {
+            constructor(id, q, r, paletteId, parentGenes=null, generation=1) {
+                this.id = id;
+                this.palette = CONFIG.PALETTES[paletteId % CONFIG.PALETTES.length];
+                this.hexes = [`${q},${r}`];
+                this.generation = generation;
+                this.workQuota = 5; 
+                this.genetics = parentGenes ? {
+                    aggression: this.mutate(parentGenes.aggression, 0.15),
+                    speedMult: this.mutate(parentGenes.speedMult, 0.1),
+                    lifespanMult: this.mutate(parentGenes.lifespanMult, 0.1),
+                    fertility: this.mutate(parentGenes.fertility, 0.1)
+                } : {
+                    aggression: Rand.float(0.8, 1.2),
+                    speedMult: Rand.float(0.9, 1.1),
+                    lifespanMult: Rand.float(0.9, 1.1),
+                    fertility: Rand.float(1.0, 1.3)
+                };
+                this.policy = 'PEACEFUL';
+                this.food = 30;
+                this.larvae = [];
+                
+                // HIVE MIND / MEMORY
+                // Map color -> Score. Score < -20 = Banned.
+                this.knowledge = {}; 
+            }
+            
+            learnPattern(color, scoreDelta) {
+                if (!this.knowledge[color]) this.knowledge[color] = 0;
+                this.knowledge[color] += scoreDelta;
+                // Clamp
+                if (this.knowledge[color] > 100) this.knowledge[color] = 100;
+                if (this.knowledge[color] < -100) this.knowledge[color] = -100;
+            }
+
+            isSafe(color) {
+                if (!this.knowledge[color]) return true; // Unknown is safe-ish
+                return this.knowledge[color] > -20; // Threshold for "Danger"
+            }
+
+            mutate(val, v) { return Math.max(0.5, Math.min(2.5, val * (1 + Rand.float(-v, v)))); }
+            getCenter() { const [q,r] = this.hexes[0].split(',').map(Number); return { x: CONFIG.HEX_SIZE * (3/2 * q), y: CONFIG.HEX_SIZE * (Math.sqrt(3)/2 * q + Math.sqrt(3) * r) }; }
+            getSpawnPoint() { return this.getCenter(); }
+            storeFood(amt) { this.food += amt; if (this.food > CONFIG.LARVA_COST && Rand.chance(0.5 * this.genetics.fertility)) { this.food -= CONFIG.LARVA_COST; this.larvae.push(0); } }
+            update(dt, world) {
+                for (let i = this.larvae.length - 1; i >= 0; i--) {
+                    this.larvae[i] += 0.8 * dt;
+                    if (this.larvae[i] >= 100) { this.larvae.splice(i, 1); world.spawnBee(this, Rand.chance(0.15)?'SOLDIER':'WORKER'); }
+                }
+                if (this.food > CONFIG.EXPAND_COST && Rand.chance(0.02)) this.expand(world);
+            }
+            expand(world) {
+                const neighbors = [{q:1,r:-1},{q:1,r:0},{q:0,r:1},{q:-1,r:1},{q:-1,r:0},{q:0,r:-1}];
+                neighbors.sort(()=>Math.random()-0.5);
+                for (let k of this.hexes) {
+                    const [cq,cr] = k.split(',').map(Number);
+                    for (let n of neighbors) {
+                        const tq=cq+n.q, tr=cr+n.r, key=`${tq},${tr}`;
+                        const h = world.getHexAtPos(tq, tr);
+                        if(h && h.type!=='HIVE' && h.type!=='POISON') { h.setHive(this.id); this.hexes.push(key); this.food -= CONFIG.EXPAND_COST; return; }
+                    }
+                }
+            }
+        }
+
+        class World {
+            constructor(canvas) {
+                this.canvas = canvas; this.ctx = canvas.getContext('2d'); this.resize();
+                this.grid = new Map(); this.colonies = []; this.bees = []; this.deadBees = []; // {x,y,life}
+                this.time = 0; this.dayCount = 1; this.weather = 'clear'; this.temperature = 25; this.seasonIdx = 0; this.windX = 0; this.windY = 0;
+                this.heatmapMode = false; this.heatmapData = [];
+                this.camera = { x: 0, y: 0, zoom: 1.2 };
+                this.activeTool = 'cursor'; this.selectedEntity = null; this.speedMultiplier = 1; this.isPaused = false;
+                this.generateWorld(40); this.bindInput();
+            }
+            resize() { this.width = window.innerWidth; this.height = window.innerHeight; this.canvas.width = this.width; this.canvas.height = this.height; }
+            generateWorld(radius) {
+                this.grid.clear(); this.bees=[]; this.colonies=[];
+                for (let q=-radius; q<=radius; q++) {
+                    let r1=Math.max(-radius,-q-radius), r2=Math.min(radius,-q+radius);
+                    for (let r=r1; r<=r2; r++) {
+                        const h = new Hex(q,r);
+                        if(Rand.chance(0.1)) h.setFlower();
+                        this.grid.set(`${q},${r}`, h);
+                    }
+                }
+                this.addColony(0,0);
+            }
+            addColony(q,r,parent=null) {
+                const id = this.colonies.length;
+                const c = new Colony(id, q, r, id, parent?.genetics, parent?parent.generation+1:1);
+                if(parent) { c.policy=parent.policy; c.food=30; }
+                this.colonies.push(c);
+                const h = this.grid.get(`${q},${r}`);
+                if(h) h.setHive(id);
+                for(let i=0;i<8;i++) this.spawnBee(c,'WORKER');
+            }
+            spawnBee(c,t) { this.bees.push(new Bee(this,c,t)); }
+            addDeadBee(x,y) { this.deadBees.push({x, y, life: 1000}); }
+            recordActivity(x,y,t) { this.heatmapData.push({x,y,t,life:100}); }
+            setWeather(w) { this.weather = w; }
+
+            update() {
+                if(this.isPaused) return;
+                const dt = this.speedMultiplier;
+                this.time += dt;
+                if(this.time >= CONFIG.DAY_LENGTH) {
+                    this.time=0; this.dayCount++; this.weather = Rand.chance(0.25)?'rain':'clear';
+                    if(this.dayCount % 5 === 0) { this.seasonIdx = (this.seasonIdx + 1) % 4; this.updateSeasonUI(); }
+                }
+                this.isDay = this.time < CONFIG.DAY_LENGTH * 0.75;
+                const hr = Math.floor((this.time/CONFIG.DAY_LENGTH)*24);
+                document.getElementById('time-display').innerText = `Day ${this.dayCount} | ${hr}:00 | ${this.weather=='rain'?'🌧️':'☀️'}`;
+                const seasonMod = CONFIG.SEASONS[this.seasonIdx].growthMod;
+                
+                this.grid.forEach(h => h.update(dt, this.isDay, this.weather, seasonMod));
+                this.colonies.forEach(c => {
+                    c.update(dt, this);
+                    if(this.isDay && c.food > CONFIG.SWARM_THRESHOLD_FOOD) {
+                        if(this.bees.filter(b=>b.colony===c).length > CONFIG.SWARM_THRESHOLD_POP && Rand.chance(0.005)) this.attemptSwarm(c);
+                    }
+                });
+                for(let i=this.bees.length-1; i>=0; i--) {
+                    const b = this.bees[i];
+                    if(b.health<=0) this.bees.splice(i,1); else b.update(dt);
+                }
+                // Dead Bees Decay
+                for(let i=this.deadBees.length-1; i>=0; i--) {
+                    this.deadBees[i].life -= dt;
+                    if(this.deadBees[i].life <= 0) this.deadBees.splice(i,1);
+                }
+                
+                if(Math.floor(Date.now()/1000)%2===0) updateLeaderboard();
+                if(Math.floor(Date.now()/500)%2===0 && currentSelColony) select(currentSelColony, 'colony');
+            }
+
+            updateSeasonUI() {
+                const s = CONFIG.SEASONS[this.seasonIdx];
+                document.getElementById('season-icon').innerText = s.icon;
+                document.getElementById('season-name').innerText = s.name;
+                document.getElementById('season-desc').innerText = s.desc;
+            }
+
+            attemptSwarm(p) {
+                const [pq,pr] = p.hexes[0].split(',').map(Number);
+                for(let i=0; i<10; i++) {
+                    const dq=Rand.int(-8,8), dr=Rand.int(-8,8);
+                    if(Math.abs(dq)<4 && Math.abs(dr)<4) continue;
+                    const h=this.getHexAtPos(pq+dq, pr+dr);
+                    if(h && h.type!=='HIVE' && h.type!=='POISON') { this.addColony(pq+dq, pr+dr, p); p.food -= 40; return; }
+                }
+            }
+
+            draw() {
+                if(this.canvas.width!==window.innerWidth) this.resize();
+                this.ctx.fillStyle = CONFIG.COLORS.GRASS[2];
+                this.ctx.fillRect(0,0,this.width,this.height);
+                this.ctx.save();
+                this.ctx.translate(this.width/2+this.camera.x, this.height/2+this.camera.y);
+                this.ctx.scale(this.camera.zoom, this.camera.zoom);
+
+                this.grid.forEach(h => {
+                   this.ctx.beginPath();
+                   const s=CONFIG.HEX_SIZE*h.sizeVar;
+                   for(let i=0;i<6;i++){
+                       const a=Math.PI/3*i, x=h.x+s*Math.cos(a), y=h.y+s*Math.sin(a);
+                       i===0?this.ctx.moveTo(x,y):this.ctx.lineTo(x,y);
+                   }
+                   this.ctx.closePath();
+                   if(h.type==='HIVE') {
+                       const c=this.colonies[h.colonyId];
+                       this.ctx.fillStyle = c?c.palette.color:'#444';
+                       this.ctx.fill();
+                       this.ctx.strokeStyle = CONFIG.COLORS.HIVE_STROKE;
+                       this.ctx.lineWidth=2; this.ctx.stroke();
+                   } else {
+                       this.ctx.fillStyle = h.colorBase; this.ctx.fill();
+                       if(h.type==='FLOWER'||h.type==='POISON') {
+                           this.ctx.beginPath();
+                           const r=s*h.flowerSize;
+                           this.ctx.arc(h.x,h.y,r,0,Math.PI*2);
+                           this.ctx.fillStyle=h.flowerColor;
+                           this.ctx.fill();
+                       }
+                   }
+                });
+                
+                // Dead Bees
+                this.ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                this.deadBees.forEach(d => {
+                    this.ctx.beginPath(); this.ctx.arc(d.x, d.y, 3, 0, Math.PI*2); this.ctx.fill();
+                });
+
+                this.bees.forEach(b => {
+                    this.ctx.save();
+                    this.ctx.translate(b.pos.x, b.pos.y);
+                    this.ctx.rotate(b.angle);
+                    this.ctx.fillStyle='rgba(255,255,255,0.6)';
+                    this.ctx.beginPath(); this.ctx.ellipse(0,-4,4,2.5,0.2,0,Math.PI*2); this.ctx.fill();
+                    this.ctx.beginPath(); this.ctx.ellipse(0,4,4,2.5,-0.2,0,Math.PI*2); this.ctx.fill();
+                    this.ctx.fillStyle = b.state === 'REPORT_WARNING' ? '#00bcd4' : b.colony.palette.color; // Cyan if warning
+                    this.ctx.beginPath(); this.ctx.ellipse(0,0,5,3,0,0,Math.PI*2); this.ctx.fill();
+                    this.ctx.fillStyle = b.colony.palette.secondary;
+                    this.ctx.fillRect(-1,-3,2,6);
+                    if(this.selectedEntity===b) {
+                        this.ctx.strokeStyle='#fff'; this.ctx.lineWidth=1.5; this.ctx.strokeRect(-8,-8,16,16);
+                    }
+                    this.ctx.restore();
+                });
+
+                if(this.heatmapMode) {
+                    this.heatmapData.forEach(p=>{
+                       this.ctx.beginPath(); this.ctx.arc(p.x,p.y,25,0,Math.PI*2);
+                       this.ctx.fillStyle=p.t==='food'?CONFIG.COLORS.HEATMAP_FOOD:CONFIG.COLORS.HEATMAP_DEATH;
+                       this.ctx.fill(); p.life--;
+                    });
+                    this.heatmapData = this.heatmapData.filter(p=>p.life>0);
+                }
+                this.ctx.restore();
+                if(this.weather==='rain') { this.ctx.fillStyle='rgba(150,180,255,0.15)'; this.ctx.fillRect(0,0,this.width,this.height); }
+                if(!this.isDay) { this.ctx.fillStyle='rgba(10,10,30,0.5)'; this.ctx.fillRect(0,0,this.width,this.height); }
+                if(this.seasonIdx === 3) { this.ctx.fillStyle = 'rgba(255,255,255,0.1)'; this.ctx.fillRect(0,0,this.width,this.height); }
+            }
+
+            bindInput() {
+                let isDrag=false, lastM={x:0,y:0};
+                this.canvas.onmousedown = e => {
+                    if(this.activeTool==='cursor') {
+                        const w=this.screenToWorld(e.clientX,e.clientY);
+                        const b=this.bees.find(x=>Math.hypot(x.pos.x-w.x, x.pos.y-w.y)<10);
+                        if(b) return select(b,'bee');
+                        const h=this.getHexAt(w.x,w.y);
+                        if(h&&h.type==='HIVE') return select(this.colonies[h.colonyId],'colony');
+                        isDrag=true; lastM={x:e.clientX,y:e.clientY};
+                    } else { isDrag=true; this.useTool(e.clientX,e.clientY); }
+                };
+                this.canvas.onmousemove = e => {
+                    if(isDrag) {
+                        if(this.activeTool==='cursor') {
+                            this.camera.x+=e.clientX-lastM.x; this.camera.y+=e.clientY-lastM.y;
+                            lastM={x:e.clientX,y:e.clientY};
+                        } else this.useTool(e.clientX,e.clientY);
+                    }
+                };
+                this.canvas.onmouseup=()=>isDrag=false;
+                this.canvas.onwheel=e=>{ this.camera.zoom=Math.max(0.5,Math.min(3,this.camera.zoom-e.deltaY*0.001)); };
+            }
+            useTool(cx,cy) {
+                const w=this.screenToWorld(cx,cy), h=this.getHexAt(w.x,w.y);
+                if(!h) return;
+                if(this.activeTool==='flower' && h.type!=='HIVE') h.setFlower(false);
+                if(this.activeTool==='poison' && h.type!=='HIVE') h.setFlower(true);
+                if(this.activeTool==='fire') { if(h.type!=='HIVE') h.reset(); this.bees.forEach(b=>{if(Math.hypot(b.pos.x-w.x,b.pos.y-w.y)<25)b.takeDamage(10)}); }
+                if(this.activeTool==='rain' && (h.type==='FLOWER'||h.type==='POISON')) h.nectar=h.maxNectar;
+                if(this.activeTool==='colony' && h.type!=='HIVE') this.addColony(h.q,h.r);
+            }
+            screenToWorld(sx,sy) { return {x:(sx-this.width/2-this.camera.x)/this.camera.zoom, y:(sy-this.height/2-this.camera.y)/this.camera.zoom}; }
+            getHexAt(x,y) { const q=(2/3*x)/CONFIG.HEX_SIZE, r=(-1/3*x+Math.sqrt(3)/3*y)/CONFIG.HEX_SIZE; return this.cubeRound(q,r,-q-r); }
+            getHexAtPos(q,r) { return this.grid.get(`${q},${r}`); }
+            cubeRound(fq,fr,fs) {
+                let q=Math.round(fq),r=Math.round(fr),s=Math.round(fs);
+                const qd=Math.abs(q-fq),rd=Math.abs(r-fr),sd=Math.abs(s-fs);
+                if(qd>rd&&qd>sd)q=-r-s; else if(rd>sd)r=-q-s; else s=-q-r;
+                return this.grid.get(`${q},${r}`);
+            }
+            save() { localStorage.setItem('evobee_save', JSON.stringify({grid:[...this.grid], colonies:this.colonies.map(c=>({id:c.id,q:parseInt(c.hexes[0].split(',')[0]),r:parseInt(c.hexes[0].split(',')[1]),policy:c.policy,food:c.food,genetics:c.genetics}))})); alert("Saved!"); }
+            load() {
+                const d=JSON.parse(localStorage.getItem('evobee_save')); if(!d)return;
+                this.grid.clear(); this.colonies=[]; this.bees=[];
+                d.grid.forEach(([k,v])=>{ const h=new Hex(v.q,v.r); Object.assign(h,v); this.grid.set(k,h); });
+                d.colonies.forEach(x=>{ const c=new Colony(x.id,x.q,x.r,x.id); Object.assign(c,x); this.colonies.push(c); for(let i=0;i<5;i++)this.spawnBee(c,'WORKER'); });
+            }
+        }
+
+        const world = new World(document.getElementById('simCanvas'));
+        function loop() { world.update(); world.draw(); requestAnimationFrame(loop); }
+        loop();
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.getElementById('tab-' + tabId).classList.add('active');
+            document.getElementById('panel-title').innerHTML = `<span class="material-symbols-rounded">${getIcon(tabId)}</span> ${getName(tabId)}`;
+        }
+        function getIcon(id) { const map = {climate:'thermostat', god:'construction', management:'tune', stats:'leaderboard', inspector:'search', system:'settings'}; return map[id] || 'circle'; }
+        function getName(id) { const map = {climate:'Climate', god:'Tools', management:'Management', stats:'Statistics', inspector:'Inspector', system:'System'}; return map[id] || 'Tab'; }
+        function setSpeed(s) { world.isPaused = s === 0; if(!world.isPaused) world.speedMultiplier = s; document.getElementById('lbl-speed').innerText = s + 'x'; }
+        function setTool(t) {
+            world.activeTool = t; document.querySelectorAll('.tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === t));
+            const toolName = {cursor:'Select', flower:'Plant Flower', poison:'Plant Poison', colony:'Spawn Colony', rain:'Grow', fire:'Purge'}[t] || t;
+            document.getElementById('status-tool').innerText = toolName;
+        }
+        function updateClimate(type, val) { if(type === 'temp') { world.temperature = parseInt(val); document.getElementById('val-temp').innerText = val + '°C'; } if(type === 'wind') { const v = parseInt(val); document.getElementById('val-wind').innerText = v; world.windX = v; world.windY = v * 0.5; } }
+        function toggleHeatmap() { world.heatmapMode = !world.heatmapMode; }
+        
+        let currentSelColony = null;
+        function updateManagementControls() {
+             if(!currentSelColony) return;
+             document.getElementById('inp-agg').value = currentSelColony.genetics.aggression; document.getElementById('val-agg').innerText = currentSelColony.genetics.aggression.toFixed(1);
+             document.getElementById('inp-fert').value = currentSelColony.genetics.fertility; document.getElementById('val-fert').innerText = currentSelColony.genetics.fertility.toFixed(1);
+             document.getElementById('inp-spd').value = currentSelColony.genetics.speedMult; document.getElementById('val-spd').innerText = currentSelColony.genetics.speedMult.toFixed(1);
+             document.getElementById('inp-quota').value = currentSelColony.workQuota; document.getElementById('val-quota').innerText = currentSelColony.workQuota;
+        }
+        function select(ent, type) {
+            world.selectedEntity = ent;
+            const statusEl = document.getElementById('status-selection');
+            if(type === 'colony') {
+                currentSelColony = ent;
+                statusEl.innerText = ent.palette.name; statusEl.style.color = ent.palette.color;
+                
+                // Build Brain Visualization
+                let brainHTML = `<div style="font-weight:bold; margin-top:10px; margin-bottom:5px;">🧠 Hive Mind (Preferences)</div>`;
+                const know = ent.knowledge;
+                if(Object.keys(know).length === 0) brainHTML += `<div style="font-style:italic; color:#666;">No patterns learned yet.</div>`;
+                for(let color in know) {
+                    const score = know[color];
+                    const width = Math.min(100, Math.abs(score));
+                    const isBan = score < -20;
+                    brainHTML += `
+                    <div class="brain-row">
+                        <div style="display:flex; align-items:center;">
+                            <div class="color-swatch" style="background:${color}"></div>
+                            ${isBan ? '<span style="color:var(--danger); font-weight:bold;">BANNED</span>' : 'Safe'}
+                        </div>
+                        <div class="score-bar-bg"><div class="score-bar-fill ${score<0?'neg':''}" style="width:${width}%"></div></div>
+                    </div>`;
+                }
+
+                document.getElementById('inspector-content').innerHTML = `
+                    <div style="color:${ent.palette.color}; font-weight:bold; font-size:18px; margin-bottom:4px;">${ent.palette.name}</div>
+                    <div style="margin-bottom:10px; font-size:12px; opacity:0.7; font-weight:600;">Generation ${ent.generation}</div>
+                    <div class="control-group">
+                        <label>Population <span class="val-display">${world.bees.filter(b=>b.colony===ent).length}</span></label>
+                        <label>Food Stores <span class="val-display">${Math.floor(ent.food)}</span></label>
+                        <label>Policy <span class="badge ${ent.policy.toLowerCase()}">${ent.policy}</span></label>
+                    </div>
+                    <div class="control-group">${brainHTML}</div>
+                `;
+                document.getElementById('mgmt-empty').style.display = 'none'; document.getElementById('mgmt-controls').style.display = 'block';
+                updateManagementControls();
+            } else {
+                currentSelColony = null; statusEl.innerText = ent.type + " Bee"; statusEl.style.color = ent.colony.palette.color;
+                document.getElementById('inspector-content').innerHTML = `
+                    <div style="color:${ent.colony.palette.color}; font-weight:bold; font-size:16px; margin-bottom:16px;">${ent.type} Bee</div>
+                    <div class="control-group">
+                         <label>Health <span class="val-display">${Math.floor(ent.health*100)}%</span></label>
+                         <label>Trips Today <span class="val-display">${ent.tripsToday}</span></label>
+                         <label>Current Task <span class="val-display">${ent.state}</span></label>
+                    </div>
+                `;
+                document.getElementById('mgmt-empty').style.display = 'block'; document.getElementById('mgmt-controls').style.display = 'none';
+            }
+        }
+        function updateGene(gene, val) { if(!currentSelColony) return; currentSelColony.genetics[gene] = parseFloat(val); updateManagementControls(); }
+        function updateQuota(val) { if(!currentSelColony) return; currentSelColony.workQuota = parseInt(val); updateManagementControls(); }
+        function setPolicy(pol) { if(currentSelColony) { currentSelColony.policy = pol; select(currentSelColony, 'colony'); } }
+        function updateLeaderboard() {
+            const tbody = document.getElementById('leaderboard-body');
+            const sorted = [...world.colonies].sort((a,b) => {
+                const popA = world.bees.filter(x=>x.colony===a).length; const popB = world.bees.filter(x=>x.colony===b).length;
+                return popB - popA;
+            });
+            tbody.innerHTML = sorted.map(c => {
+                const pop = world.bees.filter(b=>b.colony===c).length;
+                return `<tr class="rank-row"><td style="color:${c.palette.color}">${c.palette.name}</td><td>${pop}</td><td>${Math.floor(c.food)}</td><td>${c.generation}</td></tr>`;
+            }).join('');
+        }
+        setTool('cursor');
+    </script>
+</body>
+</html>
