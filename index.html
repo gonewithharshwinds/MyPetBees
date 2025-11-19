@@ -79,7 +79,7 @@
             top: 90px;
             right: 24px;
             bottom: 24px;
-            width: 340px;
+            width: 360px; /* Widened for graph */
             background: var(--panel-bg);
             border: 1px solid var(--border);
             border-radius: 24px;
@@ -133,6 +133,7 @@
         .badge.peace { background: rgba(76, 175, 80, 0.2); color: #81c784; border: 1px solid rgba(76, 175, 80, 0.3); }
         .badge.war { background: rgba(239, 83, 80, 0.2); color: #e57373; border: 1px solid rgba(239, 83, 80, 0.3); }
         .badge.turtle { background: rgba(41, 182, 246, 0.2); color: #4fc3f7; border: 1px solid rgba(41, 182, 246, 0.3); }
+        .badge.smart { background: rgba(171, 71, 188, 0.2); color: #ce93d8; border: 1px solid rgba(171, 71, 188, 0.3); }
         
         /* Learning Visuals */
         .brain-row { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid var(--border); font-size: 12px; }
@@ -145,6 +146,22 @@
         .status-bar { padding: 12px 20px; background: rgba(0,0,0,0.3); border-top: 1px solid var(--border); font-size: 11px; color: var(--text-sub); display: flex; justify-content: space-between; align-items: center; font-family: monospace; flex-shrink: 0; }
         .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #555; display: inline-block; margin-right: 6px; }
         .status-dot.active { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+        
+        /* Stats Table */
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+        .stat-item { background: rgba(255,255,255,0.03); padding: 8px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 11px; }
+        .stat-label { color: var(--text-sub); }
+        .stat-val { font-weight: 700; color: var(--text-main); }
+
+        /* Graph Canvas */
+        .projection-canvas {
+            width: 100%;
+            height: 100px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            margin-top: 10px;
+            border: 1px solid var(--border);
+        }
         
         .ranking-table { width: 100%; border-collapse: collapse; font-size: 13px; }
         .ranking-table th { text-align: left; color: var(--text-sub); padding: 8px; border-bottom: 1px solid var(--border); font-weight: 600;}
@@ -240,9 +257,6 @@
                     <div class="control-group">
                         <label>Worker Quota (Trips/Day) <span class="val-display" id="val-quota">5</span></label>
                         <input id="inp-quota" type="range" min="1" max="20" value="5" step="1" oninput="updateQuota(this.value)">
-                        <div style="font-size:11px; color:var(--danger); margin-top:6px; font-style:italic;">
-                            Warning: High quotas reduce lifespan significantly.
-                        </div>
                     </div>
                 </div>
             </div>
@@ -283,10 +297,14 @@
         const CONFIG = {
             HEX_SIZE: 16, DAY_LENGTH: 2000, BEE_LIFESPAN: 4000,
             LARVA_COST: 3, SWARM_THRESHOLD_FOOD: 60, SWARM_THRESHOLD_POP: 15, EXPAND_COST: 20,
+            POISON_LEARN_THRESHOLD: 5,
+            WATER_DEATH_THRESHOLD: 9 * 16, // 9 tiles * hex size approx distance equivalent check
             COLORS: {
                 GRASS: ['#2d3a25', '#34422b', '#263020'],
                 SAFE_FLOWERS: ['#e57373', '#64b5f6', '#ffd54f'], // Red, Blue, Yellow
                 POISON: '#9c27b0', // Purple
+                WATER: '#4fc3f7',
+                WATER_DEEP: '#0288d1',
                 HIVE_STROKE: '#b7950b',
                 HEATMAP_FOOD: 'rgba(76, 175, 80, 0.4)', HEATMAP_DEATH: 'rgba(244, 67, 54, 0.5)'
             },
@@ -311,6 +329,9 @@
             choice: (arr) => arr[Math.floor(Math.random() * arr.length)],
             chance: (p) => Math.random() < p
         };
+        
+        // --- GLOBAL STATE ---
+        let currentSelColony = null;
 
         // --- CLASSES ---
         class Hex {
@@ -318,7 +339,7 @@
                 this.q = q; this.r = r;
                 this.x = CONFIG.HEX_SIZE * (3/2 * q);
                 this.y = CONFIG.HEX_SIZE * (Math.sqrt(3)/2 * q + Math.sqrt(3) * r);
-                this.type = 'EMPTY'; 
+                this.type = 'EMPTY'; // EMPTY, FLOWER, POISON, HIVE, WATER
                 this.colonyId = -1;
                 this.nectar = 0; this.maxNectar = 0;
                 this.hiveData = null;
@@ -330,7 +351,15 @@
             setFlower(poison = false) {
                 this.type = poison ? 'POISON' : 'FLOWER';
                 this.flowerColor = poison ? CONFIG.COLORS.POISON : Rand.choice(CONFIG.COLORS.SAFE_FLOWERS);
-                this.maxNectar = Rand.int(30, 80);
+                // Sweetness Logic
+                if(this.flowerColor === '#64b5f6') { // Blue = Sweet
+                    this.maxNectar = 80; 
+                } else if (this.flowerColor === '#ffd54f') { // Yellow = Fast
+                    this.maxNectar = 40;
+                } else { // Red/Poison
+                    this.maxNectar = 50;
+                }
+                
                 this.nectar = Rand.int(10, this.maxNectar);
                 this.flowerSize = Rand.float(0.5, 0.8);
                 this.colonyId = -1;
@@ -339,11 +368,17 @@
                 this.type = 'HIVE'; this.colonyId = colonyId;
                 this.hiveData = { larvae: [], food: 0 }; this.nectar = 0; this.colorBase = '#222';
             }
-            reset() { this.type = 'EMPTY'; this.colonyId = -1; this.nectar = 0; this.flowerColor = null; }
+            setWater() {
+                this.type = 'WATER';
+                this.colorBase = CONFIG.COLORS.WATER;
+                this.nectar = 0;
+            }
+            reset() { this.type = 'EMPTY'; this.colonyId = -1; this.nectar = 0; this.flowerColor = null; this.colorBase = Rand.choice(CONFIG.COLORS.GRASS); }
             update(dt, isDay, weather, seasonMod) {
                 if ((this.type === 'FLOWER' || this.type === 'POISON') && this.nectar < this.maxNectar) {
                     let rate = isDay ? 0.01 : 0.001;
                     if (weather === 'rain') rate *= 4;
+                    if (this.flowerColor === '#ffd54f') rate *= 1.5; // Yellow regenerates faster
                     rate *= seasonMod;
                     if (Rand.chance(rate * dt)) this.nectar++;
                 }
@@ -368,12 +403,25 @@
                 this.inventory = 0; 
                 this.health = 1.0;
                 this.tripsToday = 0;
-                this.carryingWarning = null; // If this bee witnessed a death
+                this.carryingWarning = null; 
+                this.waterTimer = 0; // Exhaustion tracker
             }
 
             update(dt) {
                 if (this.health <= 0) return;
                 this.age += dt;
+                
+                // Water Exhaustion Logic
+                const currentHex = this.world.getHexAt(this.pos.x, this.pos.y);
+                if (currentHex && currentHex.type === 'WATER') {
+                    this.waterTimer += dt;
+                    if (this.waterTimer > 600) { // Approx 10 seconds real time / distance check
+                         this.takeDamage(10, "Exhaustion"); // Instant drown
+                    }
+                } else {
+                    this.waterTimer = Math.max(0, this.waterTimer - dt * 2); // Recover over land
+                }
+
                 const temp = this.world.temperature;
                 if (temp < 5) this.takeDamage(0.005 * dt, "Freeze");
                 if (temp > 40) this.takeDamage(0.005 * dt, "Heat");
@@ -385,22 +433,18 @@
                 if (temp > 30) moveSpeed *= 1.2;
                 if (this.world.weather === 'rain') moveSpeed *= 0.3;
 
-                // --- High Priority: Reporting Warning ---
                 if (this.state === 'REPORT_WARNING') {
-                    if (this.moveTo(this.colony.getCenter(), moveSpeed * 1.5)) { // Rush home
-                        this.colony.learnPattern(this.carryingWarning.color, -50); // Huge negative reinforcement
+                    if (this.moveTo(this.colony.getCenter(), moveSpeed * 1.5)) { 
+                        this.colony.learnPattern(this.carryingWarning.color, -50); 
                         this.carryingWarning = null;
                         this.state = 'IDLE';
                     }
-                    return; // Skip normal logic
+                    return; 
                 }
 
-                // --- Scan for Corpse (Witness Logic) ---
-                if (Rand.chance(0.1)) { // Check every few frames
+                if (Rand.chance(0.1)) { 
                     const nearbyDeath = this.world.deadBees.find(d => Math.hypot(d.x - this.pos.x, d.y - this.pos.y) < 40);
                     if (nearbyDeath) {
-                        // I see a dead bee! Was it poison?
-                        // Simple logic: If I see a dead bee on a flower, and I don't know it's bad yet
                         const hex = this.world.getHexAt(nearbyDeath.x, nearbyDeath.y);
                         if (hex && hex.type === 'POISON') {
                             this.state = 'REPORT_WARNING';
@@ -409,7 +453,6 @@
                     }
                 }
 
-                // Normal State Machine
                 if (!isDay) {
                     if (this.state !== 'RETURN' && this.state !== 'SLEEP') this.state = 'RETURN';
                 } else {
@@ -433,7 +476,6 @@
                         
                         const hex = this.world.getHexAt(this.pos.x, this.pos.y);
                         if (hex && (hex.type === 'FLOWER' || hex.type === 'POISON') && hex.nectar > 0) {
-                            // INTELLIGENCE CHECK
                             if (this.colony.isSafe(hex.flowerColor)) {
                                 this.target = hex;
                                 this.state = 'FORAGE';
@@ -444,18 +486,14 @@
                         if (!this.target || this.target.nectar <= 0) { this.state = 'SCOUT'; return; }
                         if (this.moveTo(this.target, moveSpeed)) {
                             if (this.target.type === 'POISON') {
-                                this.takeDamage(0.5, "Poison"); // High damage
+                                this.takeDamage(0.5, "Poison"); 
                             }
-                            
                             const amt = Math.min(2 - this.inventory, this.target.nectar);
                             this.target.nectar -= amt;
                             this.inventory += amt;
-                            
-                            // Positive reinforcement if I survive
                             if (this.target.type !== 'POISON') {
                                 this.colony.learnPattern(this.target.flowerColor, 1);
                             }
-
                             this.world.recordActivity(this.target.x, this.target.y, 'food');
                             if (this.inventory >= 2) this.state = 'RETURN';
                             else this.state = 'SCOUT';
@@ -485,6 +523,7 @@
                 this.health = 0; 
                 this.world.recordActivity(this.pos.x, this.pos.y, 'death');
                 this.world.addDeadBee(this.pos.x, this.pos.y);
+                this.colony.registerDeath(reason);
             }
             wander(s) { this.vel.x+=Rand.float(-0.3,0.3)+this.world.windX*0.05; this.vel.y+=Rand.float(-0.3,0.3)+this.world.windY*0.05; this.applyVel(s); }
             moveTo(t, s) {
@@ -523,23 +562,37 @@
                 this.policy = 'PEACEFUL';
                 this.food = 30;
                 this.larvae = [];
-                
-                // HIVE MIND / MEMORY
-                // Map color -> Score. Score < -20 = Banned.
                 this.knowledge = {}; 
+                this.poisonDeaths = 0;
+                this.avoidPoison = false;
+                
+                // Detailed Stats
+                this.stats = {
+                    deaths: { 'Old Age': 0, 'War': 0, 'Poison': 0, 'Exhaustion': 0, 'Unknown': 0 },
+                    popHistory: [] // For projection
+                };
             }
             
+            registerDeath(reason) {
+                if(reason === 'Poison') {
+                    this.poisonDeaths++;
+                    if (!this.avoidPoison && this.poisonDeaths >= CONFIG.POISON_LEARN_THRESHOLD) this.avoidPoison = true;
+                }
+                const key = reason === 'Freeze' || reason === 'Heat' ? 'Old Age' : reason; // Group temp deaths? or keep separate. Let's group into environmental or old age for simplicity or add key.
+                if(this.stats.deaths[key] !== undefined) this.stats.deaths[key]++;
+                else this.stats.deaths['Unknown']++;
+            }
+
             learnPattern(color, scoreDelta) {
                 if (!this.knowledge[color]) this.knowledge[color] = 0;
                 this.knowledge[color] += scoreDelta;
-                // Clamp
                 if (this.knowledge[color] > 100) this.knowledge[color] = 100;
                 if (this.knowledge[color] < -100) this.knowledge[color] = -100;
             }
 
             isSafe(color) {
-                if (!this.knowledge[color]) return true; // Unknown is safe-ish
-                return this.knowledge[color] > -20; // Threshold for "Danger"
+                if (!this.knowledge[color]) return true; 
+                return this.knowledge[color] > -20; 
             }
 
             mutate(val, v) { return Math.max(0.5, Math.min(2.5, val * (1 + Rand.float(-v, v)))); }
@@ -561,7 +614,7 @@
                     for (let n of neighbors) {
                         const tq=cq+n.q, tr=cr+n.r, key=`${tq},${tr}`;
                         const h = world.getHexAtPos(tq, tr);
-                        if(h && h.type!=='HIVE' && h.type!=='POISON') { h.setHive(this.id); this.hexes.push(key); this.food -= CONFIG.EXPAND_COST; return; }
+                        if(h && h.type!=='HIVE' && h.type!=='POISON' && h.type!=='WATER') { h.setHive(this.id); this.hexes.push(key); this.food -= CONFIG.EXPAND_COST; return; }
                     }
                 }
             }
@@ -570,7 +623,7 @@
         class World {
             constructor(canvas) {
                 this.canvas = canvas; this.ctx = canvas.getContext('2d'); this.resize();
-                this.grid = new Map(); this.colonies = []; this.bees = []; this.deadBees = []; // {x,y,life}
+                this.grid = new Map(); this.colonies = []; this.bees = []; this.deadBees = []; 
                 this.time = 0; this.dayCount = 1; this.weather = 'clear'; this.temperature = 25; this.seasonIdx = 0; this.windX = 0; this.windY = 0;
                 this.heatmapMode = false; this.heatmapData = [];
                 this.camera = { x: 0, y: 0, zoom: 1.2 };
@@ -578,6 +631,7 @@
                 this.generateWorld(40); this.bindInput();
             }
             resize() { this.width = window.innerWidth; this.height = window.innerHeight; this.canvas.width = this.width; this.canvas.height = this.height; }
+            
             generateWorld(radius) {
                 this.grid.clear(); this.bees=[]; this.colonies=[];
                 for (let q=-radius; q<=radius; q++) {
@@ -588,15 +642,42 @@
                         this.grid.set(`${q},${r}`, h);
                     }
                 }
+                this.generateRivers(radius);
                 this.addColony(0,0);
             }
+            
+            generateRivers(radius) {
+                // Procedural River Generation (Random Walk)
+                let numRivers = 3;
+                for(let i=0; i<numRivers; i++) {
+                    // Start at edge
+                    let q = Rand.int(-radius, radius);
+                    let r = -radius; // Rough edge
+                    let length = 50;
+                    
+                    while(length > 0) {
+                        const h = this.getHexAtPos(q, r);
+                        if(h) h.setWater();
+                        
+                        // Move towards opposite side roughly
+                        const dir = Rand.choice([{q:0,r:1}, {q:-1,r:1}, {q:1,r:0}]); // Generally down/right
+                        q += dir.q;
+                        r += dir.r;
+                        length--;
+                    }
+                }
+            }
+
             addColony(q,r,parent=null) {
                 const id = this.colonies.length;
                 const c = new Colony(id, q, r, id, parent?.genetics, parent?parent.generation+1:1);
                 if(parent) { c.policy=parent.policy; c.food=30; }
                 this.colonies.push(c);
                 const h = this.grid.get(`${q},${r}`);
-                if(h) h.setHive(id);
+                if(h) {
+                    if(h.type === 'WATER') h.reset(); // Don't spawn on water
+                    h.setHive(id);
+                }
                 for(let i=0;i<8;i++) this.spawnBee(c,'WORKER');
             }
             spawnBee(c,t) { this.bees.push(new Bee(this,c,t)); }
@@ -608,9 +689,18 @@
                 if(this.isPaused) return;
                 const dt = this.speedMultiplier;
                 this.time += dt;
+                
                 if(this.time >= CONFIG.DAY_LENGTH) {
-                    this.time=0; this.dayCount++; this.weather = Rand.chance(0.25)?'rain':'clear';
+                    this.time=0; this.dayCount++; 
+                    this.weather = Rand.chance(0.25)?'rain':'clear';
                     if(this.dayCount % 5 === 0) { this.seasonIdx = (this.seasonIdx + 1) % 4; this.updateSeasonUI(); }
+                    
+                    // Record Pop History for Graphs
+                    this.colonies.forEach(c => {
+                        const pop = this.bees.filter(b => b.colony === c).length;
+                        c.stats.popHistory.push(pop);
+                        if(c.stats.popHistory.length > 10) c.stats.popHistory.shift();
+                    });
                 }
                 this.isDay = this.time < CONFIG.DAY_LENGTH * 0.75;
                 const hr = Math.floor((this.time/CONFIG.DAY_LENGTH)*24);
@@ -628,7 +718,6 @@
                     const b = this.bees[i];
                     if(b.health<=0) this.bees.splice(i,1); else b.update(dt);
                 }
-                // Dead Bees Decay
                 for(let i=this.deadBees.length-1; i>=0; i--) {
                     this.deadBees[i].life -= dt;
                     if(this.deadBees[i].life <= 0) this.deadBees.splice(i,1);
@@ -651,7 +740,7 @@
                     const dq=Rand.int(-8,8), dr=Rand.int(-8,8);
                     if(Math.abs(dq)<4 && Math.abs(dr)<4) continue;
                     const h=this.getHexAtPos(pq+dq, pr+dr);
-                    if(h && h.type!=='HIVE' && h.type!=='POISON') { this.addColony(pq+dq, pr+dr, p); p.food -= 40; return; }
+                    if(h && h.type!=='HIVE' && h.type!=='POISON' && h.type !== 'WATER') { this.addColony(pq+dq, pr+dr, p); p.food -= 40; return; }
                 }
             }
 
@@ -663,6 +752,9 @@
                 this.ctx.translate(this.width/2+this.camera.x, this.height/2+this.camera.y);
                 this.ctx.scale(this.camera.zoom, this.camera.zoom);
 
+                // Water Animation Phase
+                const waterPhase = Date.now() * 0.002;
+
                 this.grid.forEach(h => {
                    this.ctx.beginPath();
                    const s=CONFIG.HEX_SIZE*h.sizeVar;
@@ -671,7 +763,13 @@
                        i===0?this.ctx.moveTo(x,y):this.ctx.lineTo(x,y);
                    }
                    this.ctx.closePath();
-                   if(h.type==='HIVE') {
+                   
+                   if(h.type==='WATER') {
+                       // Shimmer
+                       const shim = Math.sin(waterPhase + h.q * 0.5 + h.r * 0.5) * 20;
+                       this.ctx.fillStyle = `rgb(${70+shim}, ${190+shim}, ${240})`;
+                       this.ctx.fill();
+                   } else if(h.type==='HIVE') {
                        const c=this.colonies[h.colonyId];
                        this.ctx.fillStyle = c?c.palette.color:'#444';
                        this.ctx.fill();
@@ -689,7 +787,6 @@
                    }
                 });
                 
-                // Dead Bees
                 this.ctx.fillStyle = 'rgba(0,0,0,0.5)';
                 this.deadBees.forEach(d => {
                     this.ctx.beginPath(); this.ctx.arc(d.x, d.y, 3, 0, Math.PI*2); this.ctx.fill();
@@ -702,7 +799,7 @@
                     this.ctx.fillStyle='rgba(255,255,255,0.6)';
                     this.ctx.beginPath(); this.ctx.ellipse(0,-4,4,2.5,0.2,0,Math.PI*2); this.ctx.fill();
                     this.ctx.beginPath(); this.ctx.ellipse(0,4,4,2.5,-0.2,0,Math.PI*2); this.ctx.fill();
-                    this.ctx.fillStyle = b.state === 'REPORT_WARNING' ? '#00bcd4' : b.colony.palette.color; // Cyan if warning
+                    this.ctx.fillStyle = b.state === 'REPORT_WARNING' ? '#00bcd4' : b.colony.palette.color;
                     this.ctx.beginPath(); this.ctx.ellipse(0,0,5,3,0,0,Math.PI*2); this.ctx.fill();
                     this.ctx.fillStyle = b.colony.palette.secondary;
                     this.ctx.fillRect(-1,-3,2,6);
@@ -752,11 +849,11 @@
             useTool(cx,cy) {
                 const w=this.screenToWorld(cx,cy), h=this.getHexAt(w.x,w.y);
                 if(!h) return;
-                if(this.activeTool==='flower' && h.type!=='HIVE') h.setFlower(false);
-                if(this.activeTool==='poison' && h.type!=='HIVE') h.setFlower(true);
+                if(this.activeTool==='flower' && h.type!=='HIVE' && h.type!=='WATER') h.setFlower(false);
+                if(this.activeTool==='poison' && h.type!=='HIVE' && h.type!=='WATER') h.setFlower(true);
                 if(this.activeTool==='fire') { if(h.type!=='HIVE') h.reset(); this.bees.forEach(b=>{if(Math.hypot(b.pos.x-w.x,b.pos.y-w.y)<25)b.takeDamage(10)}); }
                 if(this.activeTool==='rain' && (h.type==='FLOWER'||h.type==='POISON')) h.nectar=h.maxNectar;
-                if(this.activeTool==='colony' && h.type!=='HIVE') this.addColony(h.q,h.r);
+                if(this.activeTool==='colony' && h.type!=='HIVE' && h.type!=='WATER') this.addColony(h.q,h.r);
             }
             screenToWorld(sx,sy) { return {x:(sx-this.width/2-this.camera.x)/this.camera.zoom, y:(sy-this.height/2-this.camera.y)/this.camera.zoom}; }
             getHexAt(x,y) { const q=(2/3*x)/CONFIG.HEX_SIZE, r=(-1/3*x+Math.sqrt(3)/3*y)/CONFIG.HEX_SIZE; return this.cubeRound(q,r,-q-r); }
@@ -798,7 +895,6 @@
         function updateClimate(type, val) { if(type === 'temp') { world.temperature = parseInt(val); document.getElementById('val-temp').innerText = val + '°C'; } if(type === 'wind') { const v = parseInt(val); document.getElementById('val-wind').innerText = v; world.windX = v; world.windY = v * 0.5; } }
         function toggleHeatmap() { world.heatmapMode = !world.heatmapMode; }
         
-        let currentSelColony = null;
         function updateManagementControls() {
              if(!currentSelColony) return;
              document.getElementById('inp-agg').value = currentSelColony.genetics.aggression; document.getElementById('val-agg').innerText = currentSelColony.genetics.aggression.toFixed(1);
@@ -806,6 +902,55 @@
              document.getElementById('inp-spd').value = currentSelColony.genetics.speedMult; document.getElementById('val-spd').innerText = currentSelColony.genetics.speedMult.toFixed(1);
              document.getElementById('inp-quota').value = currentSelColony.workQuota; document.getElementById('val-quota').innerText = currentSelColony.workQuota;
         }
+
+        function drawProjectionGraph(colony) {
+            const canvas = document.getElementById('projection-canvas');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            
+            const history = colony.stats.popHistory;
+            if(history.length < 2) return;
+            
+            const maxPop = Math.max(...history, 10);
+            
+            // Draw Line
+            ctx.beginPath();
+            ctx.strokeStyle = colony.palette.color;
+            ctx.lineWidth = 2;
+            history.forEach((p, i) => {
+                const x = (i / (history.length-1)) * canvas.width;
+                const y = canvas.height - (p / maxPop) * canvas.height * 0.8 - 10;
+                if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+            });
+            ctx.stroke();
+            
+            // Extinction Projection (Linear Regression)
+            const n = history.length;
+            let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+            history.forEach((y, x) => { sumX += x; sumY += y; sumXY += x*y; sumXX += x*x; });
+            const slope = (n*sumXY - sumX*sumY) / (n*sumXX - sumX*sumX);
+            const intercept = (sumY - slope*sumX) / n;
+            
+            ctx.font = '10px monospace';
+            ctx.fillStyle = '#aaa';
+            if(slope < -0.5) {
+                const daysToZero = Math.abs(history[n-1] / slope);
+                ctx.fillText(`📉 Extinction in ~${daysToZero.toFixed(1)} days`, 5, 15);
+                
+                // Draw red dashed line
+                ctx.beginPath();
+                ctx.strokeStyle = '#ef5350';
+                ctx.setLineDash([4, 4]);
+                ctx.moveTo(canvas.width, canvas.height - (history[n-1]/maxPop)*canvas.height*0.8 - 10);
+                ctx.lineTo(canvas.width + 50, canvas.height); // Visual hint downward
+                ctx.stroke();
+                ctx.setLineDash([]);
+            } else {
+                ctx.fillText(slope > 0.5 ? "📈 Population Growing" : "➡️ Stable", 5, 15);
+            }
+        }
+
         function select(ent, type) {
             world.selectedEntity = ent;
             const statusEl = document.getElementById('status-selection');
@@ -813,36 +958,46 @@
                 currentSelColony = ent;
                 statusEl.innerText = ent.palette.name; statusEl.style.color = ent.palette.color;
                 
-                // Build Brain Visualization
-                let brainHTML = `<div style="font-weight:bold; margin-top:10px; margin-bottom:5px;">🧠 Hive Mind (Preferences)</div>`;
+                let brainHTML = `<div style="font-weight:bold; margin-top:10px; margin-bottom:5px;">🧠 Hive Mind</div>`;
                 const know = ent.knowledge;
-                if(Object.keys(know).length === 0) brainHTML += `<div style="font-style:italic; color:#666;">No patterns learned yet.</div>`;
                 for(let color in know) {
                     const score = know[color];
                     const width = Math.min(100, Math.abs(score));
                     const isBan = score < -20;
-                    brainHTML += `
-                    <div class="brain-row">
-                        <div style="display:flex; align-items:center;">
-                            <div class="color-swatch" style="background:${color}"></div>
-                            ${isBan ? '<span style="color:var(--danger); font-weight:bold;">BANNED</span>' : 'Safe'}
-                        </div>
-                        <div class="score-bar-bg"><div class="score-bar-fill ${score<0?'neg':''}" style="width:${width}%"></div></div>
-                    </div>`;
+                    brainHTML += `<div class="brain-row"><div style="display:flex; align-items:center;"><div class="color-swatch" style="background:${color}"></div>${isBan?'<span style="color:var(--danger)">BANNED</span>':'Safe'}</div><div class="score-bar-bg"><div class="score-bar-fill ${score<0?'neg':''}" style="width:${width}%"></div></div></div>`;
                 }
 
                 document.getElementById('inspector-content').innerHTML = `
                     <div style="color:${ent.palette.color}; font-weight:bold; font-size:18px; margin-bottom:4px;">${ent.palette.name}</div>
                     <div style="margin-bottom:10px; font-size:12px; opacity:0.7; font-weight:600;">Generation ${ent.generation}</div>
+                    
                     <div class="control-group">
                         <label>Population <span class="val-display">${world.bees.filter(b=>b.colony===ent).length}</span></label>
-                        <label>Food Stores <span class="val-display">${Math.floor(ent.food)}</span></label>
+                        <label>Food <span class="val-display">${Math.floor(ent.food)}</span></label>
                         <label>Policy <span class="badge ${ent.policy.toLowerCase()}">${ent.policy}</span></label>
                     </div>
-                    <div class="control-group">${brainHTML}</div>
+                    
+                    <div class="control-group" style="margin-top:10px;">
+                        <label>💀 Death Statistics</label>
+                        <div class="stats-grid">
+                            <div class="stat-item"><span class="stat-label">Old Age</span><span class="stat-val">${ent.stats.deaths['Old Age']}</span></div>
+                            <div class="stat-item"><span class="stat-label">War</span><span class="stat-val">${ent.stats.deaths['War']}</span></div>
+                            <div class="stat-item"><span class="stat-label">Poison</span><span class="stat-val">${ent.stats.deaths['Poison']}</span></div>
+                            <div class="stat-item"><span class="stat-label">Fatigue</span><span class="stat-val">${ent.stats.deaths['Exhaustion']}</span></div>
+                        </div>
+                    </div>
+                    
+                    <div class="control-group" style="margin-top:10px;">
+                        <label>📊 Population Projection</label>
+                        <canvas id="projection-canvas" class="projection-canvas" width="260" height="100"></canvas>
+                    </div>
+                    
+                    <div class="control-group" style="margin-top:10px;">${brainHTML}</div>
                 `;
                 document.getElementById('mgmt-empty').style.display = 'none'; document.getElementById('mgmt-controls').style.display = 'block';
                 updateManagementControls();
+                setTimeout(() => drawProjectionGraph(ent), 50); // Draw after render
+                
             } else {
                 currentSelColony = null; statusEl.innerText = ent.type + " Bee"; statusEl.style.color = ent.colony.palette.color;
                 document.getElementById('inspector-content').innerHTML = `
@@ -850,6 +1005,7 @@
                     <div class="control-group">
                          <label>Health <span class="val-display">${Math.floor(ent.health*100)}%</span></label>
                          <label>Trips Today <span class="val-display">${ent.tripsToday}</span></label>
+                         <label>Water Fatigue <span class="val-display">${Math.floor(ent.waterTimer)}</span></label>
                          <label>Current Task <span class="val-display">${ent.state}</span></label>
                     </div>
                 `;
