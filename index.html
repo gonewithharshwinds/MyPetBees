@@ -108,16 +108,25 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         /* --- UI Components --- */
-        .tool-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .tool-section { margin-bottom: 16px; }
+        .tool-section-title { font-size: 11px; color: var(--text-sub); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; font-weight: 700; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+        
+        .tool-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
         .tool-btn {
             background: var(--glass); border: 1px solid var(--border); color: var(--text-sub);
-            padding: 14px; border-radius: 12px; cursor: pointer;
-            display: flex; flex-direction: column; align-items: center; gap: 8px;
-            font-size: 12px; font-weight: 500; transition: all 0.2s;
+            padding: 10px 4px; border-radius: 8px; cursor: pointer;
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+            font-size: 10px; font-weight: 500; transition: all 0.1s;
+            text-align: center; white-space: nowrap;
         }
         .tool-btn:hover { background: var(--glass-hover); color: var(--text-main); transform: translateY(-1px); }
         .tool-btn.active { background: var(--accent); color: #121212; border-color: var(--accent); font-weight: 700; }
-        .tool-btn .material-symbols-rounded { font-size: 24px; }
+        .tool-btn .material-symbols-rounded { font-size: 20px; }
+        
+        /* Custom Colors for Flower Buttons */
+        .tool-btn.flower-r.active { background: #e57373; color: white; border-color: #e57373; }
+        .tool-btn.flower-b.active { background: #64b5f6; color: white; border-color: #64b5f6; }
+        .tool-btn.flower-y.active { background: #ffd54f; color: black; border-color: #ffd54f; }
         
         .control-group { background: rgba(0,0,0,0.2); padding: 16px; border-radius: 16px; border: 1px solid var(--border); }
         label { font-size: 12px; color: var(--text-sub); display: flex; justify-content: space-between; margin-bottom: 10px; font-weight: 600; }
@@ -176,8 +185,8 @@
 
     <!-- Top Navigation -->
     <nav id="top-bar">
-        <button class="nav-btn active" onclick="switchTab('climate')"><span class="material-symbols-rounded">thermostat</span> Climate</button>
-        <button class="nav-btn" onclick="switchTab('god')"><span class="material-symbols-rounded">construction</span> Tools</button>
+        <button class="nav-btn" onclick="switchTab('climate')"><span class="material-symbols-rounded">thermostat</span> Climate</button>
+        <button class="nav-btn active" onclick="switchTab('god')"><span class="material-symbols-rounded">construction</span> Tools</button>
         <button class="nav-btn" onclick="switchTab('management')"><span class="material-symbols-rounded">tune</span> Manage</button>
         <button class="nav-btn" onclick="switchTab('stats')"><span class="material-symbols-rounded">leaderboard</span> Stats</button>
         <button class="nav-btn" onclick="switchTab('inspector')"><span class="material-symbols-rounded">search</span> Inspect</button>
@@ -187,14 +196,14 @@
     <!-- Context Panel -->
     <aside id="context-panel">
         <div class="panel-header">
-            <div class="panel-title" id="panel-title"><span class="material-symbols-rounded">thermostat</span> Climate Control</div>
+            <div class="panel-title" id="panel-title"><span class="material-symbols-rounded">construction</span> Tools</div>
             <div id="time-display" style="font-size:12px; color:var(--text-sub); font-weight:500;">Day 1</div>
         </div>
         
         <div class="panel-content">
 
             <!-- TAB: CLIMATE -->
-            <div id="tab-climate" class="tab-content active">
+            <div id="tab-climate" class="tab-content">
                 <div class="control-group" style="text-align:center">
                     <span class="material-symbols-rounded" style="font-size:32px; color:var(--accent);" id="season-icon">local_florist</span>
                     <div style="font-weight:bold; margin-top:5px;" id="season-name">Spring</div>
@@ -213,13 +222,11 @@
                 <div class="control-group">
                     <label>Humidity <span class="val-display" id="val-hum">50%</span></label>
                     <input type="range" min="0" max="100" value="50" oninput="updateClimate('humidity', this.value)">
-                    <div style="font-size:10px; color:#666;">Low humidity evaporates nectar. High causes rain.</div>
                 </div>
 
                 <div class="control-group">
                     <label>Pollution <span class="val-display" id="val-pol">0%</span></label>
                     <input type="range" min="0" max="100" value="0" oninput="updateClimate('pollution', this.value)">
-                    <div style="font-size:10px; color:#666;">Reduces lifespan and fertility.</div>
                 </div>
 
                 <div class="control-group">
@@ -229,35 +236,78 @@
             </div>
 
             <!-- TAB: GOD TOOLS -->
-            <div id="tab-god" class="tab-content">
-                <div class="tool-grid">
-                    <button class="tool-btn active" data-tool="cursor" onclick="setTool('cursor')">
-                        <span class="material-symbols-rounded">near_me</span> Select
-                    </button>
-                    <button class="tool-btn" data-tool="flower" onclick="setTool('flower')">
-                        <span class="material-symbols-rounded">local_florist</span> Flower
-                    </button>
-                    <button class="tool-btn" data-tool="poison" onclick="setTool('poison')">
-                        <span class="material-symbols-rounded" style="color:#9c27b0">skull</span> Poison
-                    </button>
-                    <button class="tool-btn" data-tool="colony" onclick="setTool('colony')">
-                        <span class="material-symbols-rounded" style="color:var(--accent)">emoji_nature</span> Colony
-                    </button>
-                    <button class="tool-btn" data-tool="mountain" onclick="setTool('mountain')">
-                        <span class="material-symbols-rounded" style="color:#8d6e63">landscape</span> Mountain
-                    </button>
-                    <button class="tool-btn" data-tool="desert" onclick="setTool('desert')">
-                        <span class="material-symbols-rounded" style="color:#ffcc80">waves</span> Desert
-                    </button>
-                    <button class="tool-btn" data-tool="rain" onclick="setTool('rain')">
-                        <span class="material-symbols-rounded" style="color:#4fc3f7">water_drop</span> Grow
-                    </button>
-                    <button class="tool-btn" data-tool="fire" onclick="setTool('fire')">
-                        <span class="material-symbols-rounded" style="color:#ef5350">local_fire_department</span> Purge
+            <div id="tab-god" class="tab-content active">
+                <!-- Default selection tool at top for quick access -->
+                <div class="tool-section">
+                    <button class="tool-btn active" style="width:100%; flex-direction:row; justify-content:center;" data-tool="cursor" onclick="setTool('cursor')">
+                        <span class="material-symbols-rounded">near_me</span> Cursor (Select / Pan)
                     </button>
                 </div>
-                <div style="margin-top:15px; font-size:11px; color:#888; text-align:center; border-top:1px solid var(--border); padding-top:10px;">
-                    <b>Mountains</b> slow bees. <b>Deserts</b> cause fatigue.
+
+                <!-- Terrain Section -->
+                <div class="tool-section">
+                    <div class="tool-section-title">Terrain & Biomes</div>
+                    <div class="tool-grid">
+                        <button class="tool-btn" data-tool="t_ocean" onclick="setTool('t_ocean')">
+                            <span class="material-symbols-rounded" style="color:var(--info)">water</span> Ocean
+                        </button>
+                        <button class="tool-btn" data-tool="t_water" onclick="setTool('t_water')">
+                            <span class="material-symbols-rounded" style="color:#4fc3f7">waves</span> Water
+                        </button>
+                        <button class="tool-btn" data-tool="t_beach" onclick="setTool('t_beach')">
+                            <span class="material-symbols-rounded" style="color:#e0c38c">beach_access</span> Beach
+                        </button>
+                        <button class="tool-btn" data-tool="t_desert" onclick="setTool('t_desert')">
+                            <span class="material-symbols-rounded" style="color:#ffcc80">landscape</span> Desert
+                        </button>
+                        <button class="tool-btn" data-tool="t_grass" onclick="setTool('t_grass')">
+                            <span class="material-symbols-rounded" style="color:var(--success)">grass</span> Grass
+                        </button>
+                        <button class="tool-btn" data-tool="t_forest" onclick="setTool('t_forest')">
+                            <span class="material-symbols-rounded" style="color:#1b5e20">forest</span> Forest
+                        </button>
+                        <button class="tool-btn" data-tool="t_mount" onclick="setTool('t_mount')">
+                            <span class="material-symbols-rounded" style="color:#8d6e63">terrain</span> Peak
+                        </button>
+                        <button class="tool-btn" data-tool="rain" onclick="setTool('rain')">
+                            <span class="material-symbols-rounded" style="color:#4fc3f7">water_drop</span> Grow
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Vegetation Section -->
+                <div class="tool-section">
+                    <div class="tool-section-title">Vegetation (Flowers)</div>
+                    <div class="tool-grid">
+                        <button class="tool-btn" data-tool="flower_rand" onclick="setTool('flower_rand')">
+                            <span class="material-symbols-rounded" style="color:white">local_florist</span> Rand
+                        </button>
+                        <button class="tool-btn flower-r" data-tool="flower_red" onclick="setTool('flower_red')">
+                            <span class="material-symbols-rounded">local_florist</span> Red
+                        </button>
+                        <button class="tool-btn flower-b" data-tool="flower_blue" onclick="setTool('flower_blue')">
+                            <span class="material-symbols-rounded">local_florist</span> Blue
+                        </button>
+                        <button class="tool-btn flower-y" data-tool="flower_yel" onclick="setTool('flower_yel')">
+                            <span class="material-symbols-rounded">local_florist</span> Yell
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Management Section -->
+                <div class="tool-section">
+                    <div class="tool-section-title">Colony & Hazards</div>
+                    <div class="tool-grid">
+                        <button class="tool-btn" data-tool="colony" onclick="setTool('colony')">
+                            <span class="material-symbols-rounded" style="color:var(--accent)">emoji_nature</span> Colony
+                        </button>
+                        <button class="tool-btn" data-tool="poison" onclick="setTool('poison')">
+                            <span class="material-symbols-rounded" style="color:#9c27b0">skull</span> Poison
+                        </button>
+                        <button class="tool-btn" data-tool="fire" onclick="setTool('fire')">
+                            <span class="material-symbols-rounded" style="color:#ef5350">local_fire_department</span> Purge
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -450,15 +500,26 @@
                 this.colorBase = `rgb(${r+noise}, ${g+noise}, ${b+noise})`;
             }
             
-            setFlower(poison = false) {
-                if (this.type !== 'GRASS' && this.type !== 'FOREST') return; 
-                this.type = poison ? 'POISON' : 'FLOWER';
-                this.flowerColor = poison ? CONFIG.COLORS.POISON : Rand.choice(CONFIG.COLORS.SAFE_FLOWERS);
+            setFlower(color = null) {
+                if (this.type !== 'GRASS' && this.type !== 'FOREST') return; // Flowers only on vegetation
+                this.type = 'FLOWER';
+                this.flowerColor = color || Rand.choice(CONFIG.COLORS.SAFE_FLOWERS);
                 this.maxNectar = this.flowerColor === '#64b5f6' ? 80 : (this.flowerColor === '#ffd54f' ? 40 : 50);
                 this.nectar = Rand.int(10, this.maxNectar);
                 this.flowerSize = Rand.float(0.5, 0.8);
                 this.colonyId = -1;
             }
+
+            setPoison() {
+                if (this.type !== 'GRASS' && this.type !== 'FOREST') return; 
+                this.type = 'POISON';
+                this.flowerColor = CONFIG.COLORS.POISON;
+                this.maxNectar = 50;
+                this.nectar = Rand.int(10, 50);
+                this.flowerSize = Rand.float(0.5, 0.8);
+                this.colonyId = -1;
+            }
+
             setHive(colonyId) {
                 this.type = 'HIVE'; this.colonyId = colonyId;
                 this.hiveData = { larvae: [], food: 0 }; this.nectar = 0; this.colorBase = '#222';
@@ -481,7 +542,7 @@
                     if (weather === 'rain' && Rand.chance(0.00005 * dt)) { 
                          this.elevation = Math.max(1, this.elevation - 3);
                          if(this.elevation < 2) {
-                             this.setGrass(0); this.setFlower(false);
+                             this.setGrass(0); this.flowerColor = null; this.type='GRASS';
                          } else {
                              this.setMountain(this.elevation);
                          }
@@ -1063,6 +1124,7 @@
                            this.ctx.fill();
                        }
                        if(h.type==='MOUNTAIN') {
+                           // Peak highlight
                            this.ctx.beginPath();
                            this.ctx.arc(h.x, h.y, s*0.4, 0, Math.PI*2);
                            this.ctx.fillStyle = `rgba(255,255,255,${h.elevation/15})`;
@@ -1133,13 +1195,27 @@
             useTool(cx,cy) {
                 const w=this.screenToWorld(cx,cy), h=this.getHexAt(w.x,w.y);
                 if(!h) return;
-                if(this.activeTool==='flower' && h.type!=='HIVE' && h.type!=='WATER') h.setFlower(false);
-                if(this.activeTool==='poison' && h.type!=='HIVE' && h.type!=='WATER') h.setFlower(true);
-                if(this.activeTool==='fire') { if(h.type!=='HIVE') h.reset(); this.bees.forEach(b=>{if(Math.hypot(b.pos.x-w.x,b.pos.y-w.y)<25)b.takeDamage(10)}); }
-                if(this.activeTool==='rain' && (h.type==='FLOWER'||h.type==='POISON')) h.nectar=h.maxNectar;
-                if(this.activeTool==='colony' && h.type!=='HIVE' && h.type!=='WATER') this.addColony(h.q,h.r);
-                if(this.activeTool==='mountain' && h.type!=='HIVE') h.setMountain(5);
-                if(this.activeTool==='desert' && h.type!=='HIVE') h.setDesert();
+                
+                // Terrain Tools
+                if(this.activeTool === 't_ocean') h.setOcean();
+                if(this.activeTool === 't_water') h.setWater();
+                if(this.activeTool === 't_beach') h.setBeach();
+                if(this.activeTool === 't_grass') h.setGrass(0);
+                if(this.activeTool === 't_forest') h.setForest();
+                if(this.activeTool === 't_mount') h.setMountain(8);
+                if(this.activeTool === 't_desert') h.setDesert();
+                
+                // Vegetation Tools
+                if(this.activeTool === 'flower_rand') h.setFlower();
+                if(this.activeTool === 'flower_red') h.setFlower('#e57373');
+                if(this.activeTool === 'flower_blue') h.setFlower('#64b5f6');
+                if(this.activeTool === 'flower_yel') h.setFlower('#ffd54f');
+
+                // Hazards & Colony
+                if(this.activeTool === 'poison') h.setFlower(true);
+                if(this.activeTool === 'colony' && h.type!=='HIVE' && h.type!=='WATER' && h.type!=='OCEAN') this.addColony(h.q,h.r);
+                if(this.activeTool === 'rain') h.nectar = h.maxNectar;
+                if(this.activeTool === 'fire') { if(h.type!=='HIVE') h.reset(); this.bees.forEach(b=>{if(Math.hypot(b.pos.x-w.x,b.pos.y-w.y)<25)b.takeDamage(10)}); }
             }
             screenToWorld(sx,sy) { return {x:(sx-this.width/2-this.camera.x)/this.camera.zoom, y:(sy-this.height/2-this.camera.y)/this.camera.zoom}; }
             getHexAt(x,y) { const q=(2/3*x)/CONFIG.HEX_SIZE, r=(-1/3*x+Math.sqrt(3)/3*y)/CONFIG.HEX_SIZE; return this.cubeRound(q,r,-q-r); }
@@ -1173,11 +1249,13 @@
         function getIcon(id) { const map = {climate:'thermostat', god:'construction', management:'tune', stats:'leaderboard', inspector:'search', system:'settings'}; return map[id] || 'circle'; }
         function getName(id) { const map = {climate:'Climate', god:'Tools', management:'Management', stats:'Statistics', inspector:'Inspector', system:'System'}; return map[id] || 'Tab'; }
         function setSpeed(s) { world.isPaused = s === 0; if(!world.isPaused) world.speedMultiplier = s; document.getElementById('lbl-speed').innerText = s + 'x'; }
+        
         function setTool(t) {
             world.activeTool = t; document.querySelectorAll('.tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === t));
-            const toolName = {cursor:'Select', flower:'Plant Flower', poison:'Plant Poison', colony:'Spawn Colony', rain:'Grow', fire:'Purge', mountain:'Raise Mountain', desert:'Make Desert'}[t] || t;
+            const toolName = {cursor:'Select', flower:'Plant Flower', poison:'Plant Poison', colony:'Spawn Colony', rain:'Grow', fire:'Purge'}[t] || t;
             document.getElementById('status-tool').innerText = toolName;
         }
+        
         function updateClimate(type, val) { 
             if(type === 'temp') { world.temperature = parseInt(val); document.getElementById('val-temp').innerText = val + '°C'; } 
             if(type === 'wind') { const v = parseInt(val); document.getElementById('val-wind').innerText = v; world.windX = v; world.windY = v * 0.5; } 
