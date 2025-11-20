@@ -166,6 +166,8 @@
         .ranking-table { width: 100%; border-collapse: collapse; font-size: 13px; }
         .ranking-table th { text-align: left; color: var(--text-sub); padding: 8px; border-bottom: 1px solid var(--border); font-weight: 600;}
         .ranking-table td { padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+        
+        .climate-tag { font-size: 10px; background: var(--glass); padding: 4px 8px; border-radius: 12px; color: var(--text-sub); margin-top: 8px; display:inline-block;}
     </style>
 </head>
 <body>
@@ -174,34 +176,52 @@
 
     <!-- Top Navigation -->
     <nav id="top-bar">
-        <button class="nav-btn" onclick="switchTab('climate')"><span class="material-symbols-rounded">thermostat</span> Climate</button>
+        <button class="nav-btn active" onclick="switchTab('climate')"><span class="material-symbols-rounded">thermostat</span> Climate</button>
         <button class="nav-btn" onclick="switchTab('god')"><span class="material-symbols-rounded">construction</span> Tools</button>
         <button class="nav-btn" onclick="switchTab('management')"><span class="material-symbols-rounded">tune</span> Manage</button>
         <button class="nav-btn" onclick="switchTab('stats')"><span class="material-symbols-rounded">leaderboard</span> Stats</button>
-        <button class="nav-btn active" onclick="switchTab('inspector')"><span class="material-symbols-rounded">search</span> Inspect</button>
+        <button class="nav-btn" onclick="switchTab('inspector')"><span class="material-symbols-rounded">search</span> Inspect</button>
         <button class="nav-btn" onclick="switchTab('system')"><span class="material-symbols-rounded">settings</span> System</button>
     </nav>
 
     <!-- Context Panel -->
     <aside id="context-panel">
         <div class="panel-header">
-            <div class="panel-title" id="panel-title"><span class="material-symbols-rounded">search</span> Inspector</div>
+            <div class="panel-title" id="panel-title"><span class="material-symbols-rounded">thermostat</span> Climate Control</div>
             <div id="time-display" style="font-size:12px; color:var(--text-sub); font-weight:500;">Day 1</div>
         </div>
         
         <div class="panel-content">
 
             <!-- TAB: CLIMATE -->
-            <div id="tab-climate" class="tab-content">
+            <div id="tab-climate" class="tab-content active">
                 <div class="control-group" style="text-align:center">
                     <span class="material-symbols-rounded" style="font-size:32px; color:var(--accent);" id="season-icon">local_florist</span>
                     <div style="font-weight:bold; margin-top:5px;" id="season-name">Spring</div>
                     <div style="font-size:11px; color:var(--text-sub);" id="season-desc">Fast Growth</div>
+                    <div class="climate-tag" id="day-night-tag">Daylight: 75%</div>
                 </div>
+                
                 <div class="control-group">
                     <label>Temperature <span class="val-display" id="val-temp">25°C</span></label>
                     <input type="range" min="0" max="45" value="25" oninput="updateClimate('temp', this.value)">
+                    <div style="display:flex; justify-content:space-between; font-size:10px; color:#666;">
+                        <span>Freeze</span><span>Ideal</span><span>Heat</span>
+                    </div>
                 </div>
+                
+                <div class="control-group">
+                    <label>Humidity <span class="val-display" id="val-hum">50%</span></label>
+                    <input type="range" min="0" max="100" value="50" oninput="updateClimate('humidity', this.value)">
+                    <div style="font-size:10px; color:#666;">Low humidity evaporates nectar. High causes rain.</div>
+                </div>
+
+                <div class="control-group">
+                    <label>Pollution <span class="val-display" id="val-pol">0%</span></label>
+                    <input type="range" min="0" max="100" value="0" oninput="updateClimate('pollution', this.value)">
+                    <div style="font-size:10px; color:#666;">Reduces lifespan and fertility.</div>
+                </div>
+
                 <div class="control-group">
                     <label>Wind Intensity <span class="val-display" id="val-wind">0</span></label>
                     <input type="range" min="0" max="10" value="0" oninput="updateClimate('wind', this.value)">
@@ -223,6 +243,12 @@
                     <button class="tool-btn" data-tool="colony" onclick="setTool('colony')">
                         <span class="material-symbols-rounded" style="color:var(--accent)">emoji_nature</span> Colony
                     </button>
+                    <button class="tool-btn" data-tool="mountain" onclick="setTool('mountain')">
+                        <span class="material-symbols-rounded" style="color:#8d6e63">landscape</span> Mountain
+                    </button>
+                    <button class="tool-btn" data-tool="desert" onclick="setTool('desert')">
+                        <span class="material-symbols-rounded" style="color:#ffcc80">waves</span> Desert
+                    </button>
                     <button class="tool-btn" data-tool="rain" onclick="setTool('rain')">
                         <span class="material-symbols-rounded" style="color:#4fc3f7">water_drop</span> Grow
                     </button>
@@ -230,7 +256,9 @@
                         <span class="material-symbols-rounded" style="color:#ef5350">local_fire_department</span> Purge
                     </button>
                 </div>
-                <div style="margin-top:10px; font-size:11px; color:#666; text-align:center">Poison flowers are Purple (#9c27b0).</div>
+                <div style="margin-top:15px; font-size:11px; color:#888; text-align:center; border-top:1px solid var(--border); padding-top:10px;">
+                    <b>Mountains</b> slow bees. <b>Deserts</b> cause fatigue.
+                </div>
             </div>
 
             <!-- TAB: MANAGEMENT -->
@@ -257,9 +285,6 @@
                     <div class="control-group">
                         <label>Worker Quota (Trips/Day) <span class="val-display" id="val-quota">5</span></label>
                         <input id="inp-quota" type="range" min="1" max="20" value="5" step="1" oninput="updateQuota(this.value)">
-                        <div style="font-size:11px; color:var(--danger); margin-top:6px; font-style:italic;">
-                            High quotas risk death by fatigue.
-                        </div>
                     </div>
                 </div>
             </div>
@@ -273,7 +298,7 @@
             </div>
 
             <!-- TAB: INSPECTOR -->
-            <div id="tab-inspector" class="tab-content active">
+            <div id="tab-inspector" class="tab-content">
                 <div id="inspector-content" style="text-align:center; padding:40px 20px; color:#666;">
                     <span class="material-symbols-rounded" style="font-size:32px; display:block; margin-bottom:10px;">search</span>
                     Nothing selected.<br>Click a Bee or Hive.
@@ -282,6 +307,15 @@
 
             <!-- TAB: SYSTEM -->
             <div id="tab-system" class="tab-content">
+                <div class="control-group">
+                    <label>Simulation Speed <span class="val-display" id="lbl-speed">1x</span></label>
+                    <div class="tool-grid" style="grid-template-columns: repeat(4, 1fr)">
+                        <button class="tool-btn" onclick="setSpeed(0)"><span class="material-symbols-rounded">pause</span></button>
+                        <button class="tool-btn" onclick="setSpeed(1)">1x</button>
+                        <button class="tool-btn" onclick="setSpeed(2)">2x</button>
+                        <button class="tool-btn" onclick="setSpeed(5)">5x</button>
+                    </div>
+                </div>
                 <div class="control-group">
                     <button class="tool-btn" style="width:100%" onclick="toggleHeatmap()">Toggle Heatmap</button>
                     <button class="tool-btn" style="width:100%; margin-top:10px;" onclick="world.save()">Save State</button>
@@ -300,14 +334,17 @@
         const CONFIG = {
             HEX_SIZE: 16, DAY_LENGTH: 2000, BEE_LIFESPAN: 4000,
             LARVA_COST: 3, SWARM_THRESHOLD_FOOD: 60, SWARM_THRESHOLD_POP: 15, EXPAND_COST: 20,
-            POISON_LEARN_THRESHOLD: 5,
-            WATER_DEATH_THRESHOLD: 9 * 16, // 9 tiles * hex size approx distance equivalent check
+            POISON_LEARN_THRESHOLD: 5, WATER_DEATH_THRESHOLD: 9 * 16,
             COLORS: {
+                DEEP_WATER: '#1a237e',
+                WATER: '#0288d1',
+                SAND: '#e0c38c',
                 GRASS: ['#2d3a25', '#34422b', '#263020'],
-                SAFE_FLOWERS: ['#e57373', '#64b5f6', '#ffd54f'], // Red, Blue, Yellow
-                POISON: '#9c27b0', // Purple
-                WATER: '#4fc3f7',
-                WATER_DEEP: '#0288d1',
+                FOREST: '#1b5e20',
+                DESERT: '#e6c07b',
+                SNOW: '#eceff1',
+                SAFE_FLOWERS: ['#e57373', '#64b5f6', '#ffd54f'],
+                POISON: '#9c27b0',
                 HIVE_STROKE: '#b7950b',
                 HEATMAP_FOOD: 'rgba(76, 175, 80, 0.4)', HEATMAP_DEATH: 'rgba(244, 67, 54, 0.5)'
             },
@@ -319,12 +356,55 @@
                 { name: "Amethyst Royal", color: '#ab47bc', secondary: '#7b1fa2' }
             ],
             SEASONS: [
-                { name: "Spring", icon: "local_florist", growthMod: 1.5, desc: "Fast growth" },
-                { name: "Summer", icon: "sunny", growthMod: 1.0, desc: "Normal growth" },
-                { name: "Autumn", icon: "nature", growthMod: 0.5, desc: "Slow growth" },
-                { name: "Winter", icon: "ac_unit", growthMod: 0.1, desc: "Dormant" }
+                { name: "Spring", icon: "local_florist", growthMod: 1.5, desc: "Fast growth", dayRatio: 0.75 },
+                { name: "Summer", icon: "sunny", growthMod: 1.0, desc: "Normal growth", dayRatio: 0.85 },
+                { name: "Autumn", icon: "nature", growthMod: 0.5, desc: "Slow growth", dayRatio: 0.65 },
+                { name: "Winter", icon: "ac_unit", growthMod: 0.1, desc: "Dormant", dayRatio: 0.4 }
             ]
         };
+
+        // Simple Perlin Noise Implementation
+        const Noise = {
+            p: new Uint8Array(512),
+            perm: new Uint8Array(512),
+            init: function() {
+                for(let i=0; i<256; i++) this.p[i] = Math.floor(Math.random()*256);
+                for(let i=0; i<512; i++) this.perm[i] = this.p[i & 255];
+            },
+            dot: function(g, x, y) { return g[0]*x + g[1]*y; },
+            mix: function(a, b, t) { return (1-t)*a + t*b; },
+            fade: function(t) { return t*t*t*(t*(t*6-15)+10); },
+            grad: function(hash, x, y) {
+                const h = hash & 15;
+                const u = h<8 ? x : y;
+                const v = h<4 ? y : h===12||h===14 ? x : 0;
+                return ((h&1) === 0 ? u : -u) + ((h&2) === 0 ? v : -v);
+            },
+            perlin: function(x, y) {
+                if(!this.perm[0]) this.init();
+                let X = Math.floor(x) & 255, Y = Math.floor(y) & 255;
+                x -= Math.floor(x); y -= Math.floor(y);
+                let u = this.fade(x), v = this.fade(y);
+                let A = this.perm[X]+Y, AA = this.perm[A], AB = this.perm[A+1];
+                let B = this.perm[X+1]+Y, BA = this.perm[B], BB = this.perm[B+1];
+                return this.mix(this.mix(this.grad(this.perm[AA], x, y), this.grad(this.perm[BA], x-1, y), u),
+                                this.mix(this.grad(this.perm[AB], x, y-1), this.grad(this.perm[BB], x-1, y-1), u), v);
+            },
+            octave: function(x, y, octaves, persistence) {
+                let total = 0;
+                let frequency = 1;
+                let amplitude = 1;
+                let maxValue = 0;
+                for(let i=0;i<octaves;i++) {
+                    total += this.perlin(x * frequency, y * frequency) * amplitude;
+                    maxValue += amplitude;
+                    amplitude *= persistence;
+                    frequency *= 2;
+                }
+                return (total / maxValue) + 0.5;
+            }
+        };
+        Noise.init();
 
         const Rand = {
             float: (min, max) => Math.random() * (max - min) + min,
@@ -333,7 +413,6 @@
             chance: (p) => Math.random() < p
         };
         
-        // --- GLOBAL STATE ---
         let currentSelColony = null;
 
         // --- CLASSES ---
@@ -342,27 +421,40 @@
                 this.q = q; this.r = r;
                 this.x = CONFIG.HEX_SIZE * (3/2 * q);
                 this.y = CONFIG.HEX_SIZE * (Math.sqrt(3)/2 * q + Math.sqrt(3) * r);
-                this.type = 'EMPTY'; // EMPTY, FLOWER, POISON, HIVE, WATER
-                this.colonyId = -1;
+                this.type = 'EMPTY'; this.colonyId = -1;
                 this.nectar = 0; this.maxNectar = 0;
                 this.hiveData = null;
-                this.colorBase = Rand.choice(CONFIG.COLORS.GRASS);
+                this.colorBase = '#000';
                 this.sizeVar = Rand.float(0.95, 1.05);
                 this.flowerColor = null;
                 this.flowerSize = 0;
+                this.elevation = 0;
             }
+            setOcean() { this.type = 'OCEAN'; this.colorBase = CONFIG.COLORS.DEEP_WATER; this.nectar = 0; this.elevation = -2; }
+            setWater() { this.type = 'WATER'; this.colorBase = CONFIG.COLORS.WATER; this.nectar = 0; this.elevation = -1; }
+            setBeach() { this.type = 'SAND'; this.colorBase = CONFIG.COLORS.SAND; this.nectar = 0; this.elevation = 0; }
+            setGrass(variant) { this.type = 'GRASS'; this.colorBase = CONFIG.COLORS.GRASS[variant%3]; this.elevation = 1; }
+            setScrub() { this.type = 'GRASS'; this.colorBase = '#5d6648'; this.elevation = 1; } // Transition to desert
+            setForest() { this.type = 'FOREST'; this.colorBase = CONFIG.COLORS.FOREST; this.elevation = 2; }
+            setDesert() { this.type = 'DESERT'; this.colorBase = CONFIG.COLORS.DESERT; this.nectar = 0; this.elevation = 1; }
+            setMountain(lvl) {
+                this.type = 'MOUNTAIN'; this.elevation = lvl; this.nectar = 0;
+                let r, g, b;
+                // Gradient for mountain height
+                if (lvl > 8) { r=245; g=245; b=250; } // Snow
+                else if (lvl > 5) { r=120; g=120; b=120; } // High Rock
+                else { r=90; g=80; b=70; } // Foothill/Base
+                
+                // Slight noise for texture
+                const noise = Rand.int(-10, 10);
+                this.colorBase = `rgb(${r+noise}, ${g+noise}, ${b+noise})`;
+            }
+            
             setFlower(poison = false) {
+                if (this.type !== 'GRASS' && this.type !== 'FOREST') return; 
                 this.type = poison ? 'POISON' : 'FLOWER';
                 this.flowerColor = poison ? CONFIG.COLORS.POISON : Rand.choice(CONFIG.COLORS.SAFE_FLOWERS);
-                // Sweetness Logic
-                if(this.flowerColor === '#64b5f6') { // Blue = Sweet
-                    this.maxNectar = 80; 
-                } else if (this.flowerColor === '#ffd54f') { // Yellow = Fast
-                    this.maxNectar = 40;
-                } else { // Red/Poison
-                    this.maxNectar = 50;
-                }
-                
+                this.maxNectar = this.flowerColor === '#64b5f6' ? 80 : (this.flowerColor === '#ffd54f' ? 40 : 50);
                 this.nectar = Rand.int(10, this.maxNectar);
                 this.flowerSize = Rand.float(0.5, 0.8);
                 this.colonyId = -1;
@@ -371,20 +463,32 @@
                 this.type = 'HIVE'; this.colonyId = colonyId;
                 this.hiveData = { larvae: [], food: 0 }; this.nectar = 0; this.colorBase = '#222';
             }
-            setWater() {
-                this.type = 'WATER';
-                this.colorBase = CONFIG.COLORS.WATER;
-                this.nectar = 0;
-            }
-            reset() { this.type = 'EMPTY'; this.colonyId = -1; this.nectar = 0; this.flowerColor = null; this.colorBase = Rand.choice(CONFIG.COLORS.GRASS); }
-            update(dt, isDay, weather, seasonMod) {
-                if ((this.type === 'FLOWER' || this.type === 'POISON') && this.nectar < this.maxNectar) {
-                    let rate = isDay ? 0.01 : 0.001;
-                    if (weather === 'rain') rate *= 4;
-                    if (this.flowerColor === '#ffd54f') rate *= 1.5; // Yellow regenerates faster
-                    rate *= seasonMod;
-                    if (Rand.chance(rate * dt)) this.nectar++;
+            reset() { this.type = 'EMPTY'; this.colonyId = -1; this.nectar = 0; this.flowerColor = null; }
+            
+            update(dt, isDay, weather, seasonMod, humidity) {
+                if ((this.type === 'FLOWER' || this.type === 'POISON')) {
+                    if (humidity < 30 && this.nectar > 0) if (Rand.chance(0.005 * dt)) this.nectar--; 
+                    if(this.nectar < this.maxNectar) {
+                        let rate = isDay ? 0.01 : 0.001;
+                        if (weather === 'rain') rate *= 4;
+                        rate *= seasonMod;
+                        if (humidity > 70) rate *= 1.2;
+                        if (Rand.chance(rate * dt)) this.nectar++;
+                    }
                 }
+                
+                if (this.type === 'MOUNTAIN' && this.elevation > 5) {
+                    if (weather === 'rain' && Rand.chance(0.00005 * dt)) { 
+                         this.elevation = Math.max(1, this.elevation - 3);
+                         if(this.elevation < 2) {
+                             this.setGrass(0); this.setFlower(false);
+                         } else {
+                             this.setMountain(this.elevation);
+                         }
+                         return 'LANDSLIDE';
+                    }
+                }
+                return null;
             }
         }
 
@@ -397,82 +501,86 @@
                 this.angle = 0;
                 this.genes = colony.genetics;
                 this.age = 0;
+                const pollutionPenalty = 1.0 - (this.world.pollution / 200); 
                 const workloadPenalty = 1 - ((colony.workQuota - 5) * 0.05);
-                this.maxAge = CONFIG.BEE_LIFESPAN * this.genes.lifespanMult * workloadPenalty * Rand.float(0.8, 1.2);
+                this.maxAge = CONFIG.BEE_LIFESPAN * this.genes.lifespanMult * workloadPenalty * pollutionPenalty * Rand.float(0.8, 1.2);
                 this.speed = (type === 'SOLDIER' ? 1.5 : 2.5) * this.genes.speedMult;
                 this.aggression = this.genes.aggression * (type === 'SOLDIER' ? 2.0 : 1.0);
-                this.state = 'IDLE'; 
-                this.target = null; 
-                this.inventory = 0; 
-                this.health = 1.0;
-                this.tripsToday = 0;
-                this.carryingWarning = null; 
-                this.waterTimer = 0; 
+                this.state = 'IDLE'; this.target = null; this.inventory = 0; this.health = 1.0;
+                this.tripsToday = 0; this.carryingWarning = null; this.waterTimer = 0; this.desertTimer = 0;
             }
 
             update(dt) {
                 if (this.health <= 0) return;
                 this.age += dt;
                 
-                // Water Exhaustion Logic
-                const currentHex = this.world.getHexAt(this.pos.x, this.pos.y);
-                if (currentHex && currentHex.type === 'WATER') {
-                    this.waterTimer += dt;
-                    if (this.waterTimer > 600) { 
-                         this.takeDamage(10, "Drowned"); 
+                const hex = this.world.getHexAt(this.pos.x, this.pos.y);
+                let moveSpeed = this.speed;
+
+                if (hex) {
+                    if (hex.type === 'OCEAN' || hex.type === 'WATER') {
+                        this.waterTimer += dt;
+                        if (this.waterTimer > 600) this.takeDamage(10, "Drowned"); 
+                    } else {
+                        this.waterTimer = Math.max(0, this.waterTimer - dt * 2);
                     }
-                } else {
-                    this.waterTimer = Math.max(0, this.waterTimer - dt * 2);
+                    
+                    if (hex.type === 'DESERT') {
+                        this.desertTimer += dt;
+                        if (this.desertTimer > 300) this.takeDamage(0.05 * dt, "Exhaustion"); 
+                    } else {
+                        this.desertTimer = Math.max(0, this.desertTimer - dt);
+                    }
+
+                    if (hex.type === 'MOUNTAIN') {
+                        moveSpeed *= 0.5; 
+                        if (hex.elevation > 7) this.takeDamage(0.1 * dt, "Freeze"); 
+                    }
                 }
 
                 const temp = this.world.temperature;
                 if (temp < 5) this.takeDamage(0.005 * dt, "Freeze");
                 if (temp > 40) this.takeDamage(0.005 * dt, "Heat");
+                if (this.world.pollution > 80) this.takeDamage(0.002 * dt, "Pollution");
+
                 if (this.age > this.maxAge) return this.die("Old Age");
 
                 const isDay = this.world.isDay;
-                let moveSpeed = this.speed;
                 if (temp < 15) moveSpeed *= 0.6;
                 if (temp > 30) moveSpeed *= 1.2;
                 if (this.world.weather === 'rain') moveSpeed *= 0.3;
 
-                // State: Reporting Warning
                 if (this.state === 'REPORT_WARNING') {
                     if (this.moveTo(this.colony.getCenter(), moveSpeed * 1.5)) { 
                         this.colony.learnPattern(this.carryingWarning.color, -50); 
-                        this.carryingWarning = null;
-                        this.state = 'IDLE';
+                        this.carryingWarning = null; this.state = 'IDLE';
                     }
                     return; 
                 }
                 
-                // State: RAID
                 if (this.state === 'RAID') {
                     if (!this.target || this.target.colonyId === -1) {
-                        // Find enemy colony
                         const enemy = this.world.colonies.find(c => c.id !== this.colony.id);
-                        if (enemy) {
-                            this.target = { x: enemy.getCenter().x, y: enemy.getCenter().y };
-                        } else {
-                            this.state = 'IDLE'; // No enemies, go back
-                        }
+                        if (enemy) this.target = { x: enemy.getCenter().x, y: enemy.getCenter().y };
+                        else this.state = 'IDLE';
                     }
-                    
                     if (this.target) {
                         this.moveTo(this.target, moveSpeed);
-                        this.checkCombat(); // Aggressively check combat
+                        this.checkCombat();
                     }
                     return;
                 }
 
-                // Witness Death
                 if (Rand.chance(0.1)) { 
                     const nearbyDeath = this.world.deadBees.find(d => Math.hypot(d.x - this.pos.x, d.y - this.pos.y) < 40);
                     if (nearbyDeath) {
-                        const hex = this.world.getHexAt(nearbyDeath.x, nearbyDeath.y);
-                        if (hex && hex.type === 'POISON') {
+                        const h = this.world.getHexAt(nearbyDeath.x, nearbyDeath.y);
+                        if (h && h.type === 'POISON') {
                             this.state = 'REPORT_WARNING';
-                            this.carryingWarning = { color: hex.flowerColor };
+                            this.carryingWarning = { color: h.flowerColor };
+                        }
+                        if (h && (h.type === 'DESERT' || h.type === 'OCEAN' || h.type === 'MOUNTAIN')) {
+                            this.colony.learnTerrain(h.type, -5);
                         }
                     }
                 }
@@ -484,10 +592,7 @@
                     if (this.tripsToday >= this.colony.workQuota && this.state !== 'RETURN') this.state = 'RETURN';
                 }
                 
-                // Soldier Logic Switch
-                if (this.type === 'SOLDIER' && this.colony.policy === 'AGGRESSIVE' && this.state === 'PATROL') {
-                    if (Rand.chance(0.01)) this.state = 'RAID';
-                }
+                if (this.type === 'SOLDIER' && this.colony.policy === 'AGGRESSIVE' && this.state === 'PATROL' && Rand.chance(0.01)) this.state = 'RAID';
 
                 switch(this.state) {
                     case 'SLEEP':
@@ -502,31 +607,26 @@
                     case 'SCOUT':
                         this.wander(moveSpeed);
                         if (this.colony.policy === 'TURTLE' && this.distTo(this.colony.getCenter()) > 120) this.state = 'RETURN';
-                        
-                        const hex = this.world.getHexAt(this.pos.x, this.pos.y);
                         if (hex && (hex.type === 'FLOWER' || hex.type === 'POISON') && hex.nectar > 0) {
-                            if (this.colony.isSafe(hex.flowerColor)) {
-                                this.target = hex;
-                                this.state = 'FORAGE';
+                            if (this.colony.isSafe(hex.flowerColor) && this.colony.isTerrainSafe(hex.type)) { 
+                                this.target = hex; this.state = 'FORAGE'; 
                             }
                         }
-                        this.checkCombat(); // Passive check
+                        this.checkCombat();
                         break;
                     case 'FORAGE':
                         if (!this.target || this.target.nectar <= 0) { this.state = 'SCOUT'; return; }
                         if (this.moveTo(this.target, moveSpeed)) {
-                            if (this.target.type === 'POISON') {
-                                this.takeDamage(0.5, "Poison"); 
-                            }
+                            if (this.target.type === 'POISON') this.takeDamage(0.5, "Poison"); 
                             const amt = Math.min(2 - this.inventory, this.target.nectar);
                             this.target.nectar -= amt;
                             this.inventory += amt;
                             if (this.target.type !== 'POISON') {
                                 this.colony.learnPattern(this.target.flowerColor, 1);
+                                this.colony.learnTerrain(this.target.type, 0.5);
                             }
                             this.world.recordActivity(this.target.x, this.target.y, 'food');
-                            if (this.inventory >= 2) this.state = 'RETURN';
-                            else this.state = 'SCOUT';
+                            if (this.inventory >= 2) this.state = 'RETURN'; else this.state = 'SCOUT';
                         }
                         break;
                     case 'RETURN':
@@ -534,19 +634,10 @@
                             this.colony.storeFood(this.inventory);
                             this.inventory = 0;
                             this.tripsToday++;
-                            
-                            // Fatigue / Overwork Check
                             if (this.tripsToday > this.colony.workQuota) {
-                                const excess = this.tripsToday - this.colony.workQuota;
-                                // Probability of death scales with excess work
-                                if (Rand.chance(excess * 0.05)) {
-                                    this.die("Overwork");
-                                    return;
-                                }
+                                if (Rand.chance((this.tripsToday - this.colony.workQuota) * 0.05)) { this.die("Overwork"); return; }
                             }
-                            
-                            if (!isDay || this.tripsToday >= this.colony.workQuota) this.state = 'SLEEP';
-                            else this.state = 'IDLE';
+                            if (!isDay || this.tripsToday >= this.colony.workQuota) this.state = 'SLEEP'; else this.state = 'IDLE';
                         }
                         break;
                     case 'PATROL':
@@ -561,26 +652,18 @@
             }
             
             checkCombat() {
-                // Optimized combat check
-                // If we are soldiers or raiding, check more aggressively
                 const range = (this.state === 'RAID' || this.state === 'PATROL') ? 40 : 15;
-                
-                if (Rand.chance(0.2)) { // 20% check per frame to save perf
+                if (Rand.chance(0.2)) {
                     for (let other of this.world.bees) {
                         if (other.colony.id !== this.colony.id && other.health > 0) {
                             if (this.distTo(other.pos) < range) {
-                                // Combat Logic
-                                // 1. Home Turf Bonus
                                 const myDist = this.distTo(this.colony.getCenter());
                                 let myBonus = myDist < 100 ? 1.5 : 1.0;
-                                
-                                // 2. Aggression Stat
                                 const myDmg = 0.2 * this.aggression * myBonus;
-                                const theirDmg = 0.2 * other.aggression; // Assuming neutral ground for them for simplicity, could check their home too
-                                
+                                const theirDmg = 0.2 * other.aggression;
                                 other.takeDamage(myDmg, "War");
                                 this.takeDamage(theirDmg, "War");
-                                return; // Fight one at a time
+                                return;
                             }
                         }
                     }
@@ -632,16 +715,11 @@
                 this.food = 30;
                 this.larvae = [];
                 this.knowledge = {}; 
+                this.terrainKnowledge = {}; 
                 this.poisonDeaths = 0;
                 this.avoidPoison = false;
-                
-                // Detailed Stats
-                this.stats = {
-                    deaths: { 'Old Age': 0, 'War': 0, 'Poison': 0, 'Overwork': 0, 'Drowned': 0, 'Unknown': 0 },
-                    popHistory: [] 
-                };
+                this.stats = { deaths: { 'Old Age': 0, 'War': 0, 'Poison': 0, 'Overwork': 0, 'Drowned': 0, 'Exhaustion': 0, 'Pollution': 0, 'Landslide': 0, 'Unknown': 0 }, popHistory: [] };
             }
-            
             registerDeath(reason) {
                 if(reason === 'Poison') {
                     this.poisonDeaths++;
@@ -649,28 +727,34 @@
                 }
                 let key = reason;
                 if (reason === 'Freeze' || reason === 'Heat') key = 'Old Age';
-                if (reason === 'Fatigue') key = 'Overwork';
-                
                 if(this.stats.deaths[key] !== undefined) this.stats.deaths[key]++;
                 else this.stats.deaths['Unknown']++;
             }
-
             learnPattern(color, scoreDelta) {
                 if (!this.knowledge[color]) this.knowledge[color] = 0;
                 this.knowledge[color] += scoreDelta;
                 if (this.knowledge[color] > 100) this.knowledge[color] = 100;
                 if (this.knowledge[color] < -100) this.knowledge[color] = -100;
             }
-
-            isSafe(color) {
-                if (!this.knowledge[color]) return true; 
-                return this.knowledge[color] > -20; 
+            learnTerrain(type, scoreDelta) {
+                if (!this.terrainKnowledge[type]) this.terrainKnowledge[type] = 0;
+                this.terrainKnowledge[type] += scoreDelta;
+                if (this.terrainKnowledge[type] > 50) this.terrainKnowledge[type] = 50;
+                if (this.terrainKnowledge[type] < -50) this.terrainKnowledge[type] = -50;
             }
-
+            isSafe(color) { if (!this.knowledge[color]) return true; return this.knowledge[color] > -20; }
+            isTerrainSafe(type) { if (!this.terrainKnowledge[type]) return true; return this.terrainKnowledge[type] > -20; }
+            
             mutate(val, v) { return Math.max(0.5, Math.min(2.5, val * (1 + Rand.float(-v, v)))); }
             getCenter() { const [q,r] = this.hexes[0].split(',').map(Number); return { x: CONFIG.HEX_SIZE * (3/2 * q), y: CONFIG.HEX_SIZE * (Math.sqrt(3)/2 * q + Math.sqrt(3) * r) }; }
             getSpawnPoint() { return this.getCenter(); }
-            storeFood(amt) { this.food += amt; if (this.food > CONFIG.LARVA_COST && Rand.chance(0.5 * this.genetics.fertility)) { this.food -= CONFIG.LARVA_COST; this.larvae.push(0); } }
+            storeFood(amt) { 
+                this.food += amt; 
+                const pollutionFactor = 1.0 - (world.pollution / 150);
+                if (this.food > CONFIG.LARVA_COST && Rand.chance(0.5 * this.genetics.fertility * pollutionFactor)) { 
+                    this.food -= CONFIG.LARVA_COST; this.larvae.push(0); 
+                } 
+            }
             update(dt, world) {
                 for (let i = this.larvae.length - 1; i >= 0; i--) {
                     this.larvae[i] += 0.8 * dt;
@@ -686,7 +770,9 @@
                     for (let n of neighbors) {
                         const tq=cq+n.q, tr=cr+n.r, key=`${tq},${tr}`;
                         const h = world.getHexAtPos(tq, tr);
-                        if(h && h.type!=='HIVE' && h.type!=='POISON' && h.type!=='WATER') { h.setHive(this.id); this.hexes.push(key); this.food -= CONFIG.EXPAND_COST; return; }
+                        if(h && h.type!=='HIVE' && h.type!=='POISON' && h.type!=='WATER' && h.type!=='OCEAN' && h.type!=='MOUNTAIN') { 
+                            h.setHive(this.id); this.hexes.push(key); this.food -= CONFIG.EXPAND_COST; return; 
+                        }
                     }
                 }
             }
@@ -696,49 +782,154 @@
             constructor(canvas) {
                 this.canvas = canvas; this.ctx = canvas.getContext('2d'); this.resize();
                 this.grid = new Map(); this.colonies = []; this.bees = []; this.deadBees = []; 
-                this.time = 0; this.dayCount = 1; this.weather = 'clear'; this.temperature = 25; this.seasonIdx = 0; this.windX = 0; this.windY = 0;
+                this.time = 0; this.dayCount = 1; 
+                this.weather = 'clear'; this.temperature = 25; this.seasonIdx = 0; 
+                this.windX = 0; this.windY = 0; this.humidity = 50; this.pollution = 0;
+                
                 this.heatmapMode = false; this.heatmapData = [];
-                this.camera = { x: 0, y: 0, zoom: 1.2 };
+                this.camera = { x: 0, y: 0, zoom: 0.5 }; // Zoom out further for larger map
                 this.activeTool = 'cursor'; this.selectedEntity = null; this.speedMultiplier = 1; this.isPaused = false;
-                this.generateWorld(40); this.bindInput();
+                
+                // Updated Radius to 80 (approx 160 width)
+                this.generateWorld(80); 
+                this.bindInput();
             }
             resize() { this.width = window.innerWidth; this.height = window.innerHeight; this.canvas.width = this.width; this.canvas.height = this.height; }
             
             generateWorld(radius) {
                 this.grid.clear(); this.bees=[]; this.colonies=[];
+                
+                // Noise Setup
+                const scale = 0.03; // Smaller scale = Larger features
+                
+                const tiles = [];
                 for (let q=-radius; q<=radius; q++) {
                     let r1=Math.max(-radius,-q-radius), r2=Math.min(radius,-q+radius);
                     for (let r=r1; r<=r2; r++) {
                         const h = new Hex(q,r);
-                        if(Rand.chance(0.1)) h.setFlower();
                         this.grid.set(`${q},${r}`, h);
+                        tiles.push(h);
+                        
+                        // Noise Generation
+                        let nx = (q * 0.8 + 2000) * scale;
+                        let ny = (r * 0.8 + 2000) * scale;
+                        
+                        // Elevation Noise (Main Shape)
+                        let elev = Noise.octave(nx, ny, 6, 0.5);
+                        
+                        // Moisture Noise (Biome dist)
+                        let moist = Noise.octave(nx + 500, ny + 500, 4, 0.5);
+                        
+                        // --- Hierarchy: Ocean > Green > Mtn > River > Desert ---
+                        
+                        // 1. Ocean (Base Layer - 60% coverage approx)
+                        if (elev < 0.55) {
+                            if (elev < 0.50) h.setOcean(); // Deep Ocean
+                            else h.setWater(); // Shallow/Coast
+                        } 
+                        // 2. Transition: Beach
+                        else if (elev < 0.58) {
+                            h.setBeach();
+                        }
+                        // 3. Land
+                        else {
+                            // Mountains (High elevation)
+                            if (elev > 0.82) {
+                                // Map 0.82-1.0 to level 4-12
+                                let lvl = Math.floor((elev - 0.82) * 60) + 4; 
+                                h.setMountain(lvl);
+                            } 
+                            // Foothills transition
+                            else if (elev > 0.78) {
+                                h.setMountain(2); // Low rocky hills
+                            }
+                            // Flat Lands
+                            else {
+                                // Moisture check for Biome
+                                if (moist < 0.25) {
+                                    h.setDesert(); // Rare dry pockets
+                                } else if (moist < 0.35) {
+                                    h.setScrub(); // Transition Green->Desert
+                                } else if (moist > 0.7) {
+                                    h.setForest(); // Dense Green
+                                } else {
+                                    h.setGrass(Math.floor(moist*10)); // Standard Green
+                                }
+                            }
+                        }
                     }
                 }
-                this.generateRivers(radius);
-                this.addColony(0,0);
+                
+                // 4. Rivers (Hydraulic) - Form on top of land
+                // Find high points (Mountain Springs)
+                let springs = tiles.filter(t => t.type === 'MOUNTAIN' && t.elevation > 8);
+                let numRivers = 12; // More rivers for larger map
+                
+                for(let i=0; i<numRivers; i++) {
+                    if(springs.length === 0) break;
+                    let start = Rand.choice(springs);
+                    let curr = start;
+                    let len = 0;
+                    let visited = new Set();
+                    
+                    while(len < 150) { // Long rivers
+                        if (curr.type !== 'MOUNTAIN' && curr.type !== 'OCEAN') curr.setWater();
+                        
+                        if (curr.type === 'OCEAN') break; // Reached sea
+                        visited.add(curr);
+
+                        // Flow Downhill
+                        let ns = this.getNeighbors(curr.q, curr.r);
+                        // Prioritize lowest elevation
+                        ns.sort((a,b) => {
+                            let ea = a.type==='OCEAN'?-5 : (a.type==='WATER'?-1 : (a.type==='MOUNTAIN'?a.elevation : 1));
+                            let eb = b.type==='OCEAN'?-5 : (b.type==='WATER'?-1 : (b.type==='MOUNTAIN'?b.elevation : 1));
+                            return ea - eb;
+                        });
+                        
+                        let next = ns[0];
+                        // If stuck in local pit, maybe stop or force direction
+                        if (!next || visited.has(next)) break;
+                        
+                        curr = next;
+                        len++;
+                    }
+                }
+                
+                // 5. Vegetation Spawning
+                tiles.forEach(h => {
+                    if ((h.type === 'GRASS' || h.type === 'FOREST') && Rand.chance(0.12)) {
+                        h.setFlower();
+                    }
+                });
+
+                // 6. Start Colony
+                let startHex = this.grid.get('0,0');
+                // Ensure we start on valid land
+                if (!startHex || startHex.type === 'OCEAN' || startHex.type === 'WATER' || startHex.type === 'MOUNTAIN') {
+                    // Spiral search for land
+                    let found = false;
+                    let q=0, r=0, dq=1, dr=0; // spiral vars
+                    for(let i=0; i<1000; i++) { // search limit
+                        // move
+                        q += dq; r += dr; // simple move placeholder, actual spiral logic omitted for brevity, using random search
+                        let candidate = tiles[Math.floor(Math.random()*tiles.length)];
+                        if(candidate.type === 'GRASS') {
+                            startHex = candidate;
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+                if(startHex) this.addColony(startHex.q, startHex.r);
+            }
+
+            getNeighbors(q, r) {
+                const dirs = [{q:1,r:0}, {q:1,r:-1}, {q:0,r:-1}, {q:-1,r:0}, {q:-1,r:1}, {q:0,r:1}];
+                return dirs.map(d => this.grid.get(`${q+d.q},${r+d.r}`)).filter(h => h);
             }
             
-            generateRivers(radius) {
-                // Procedural River Generation (Random Walk)
-                let numRivers = 3;
-                for(let i=0; i<numRivers; i++) {
-                    // Start at edge
-                    let q = Rand.int(-radius, radius);
-                    let r = -radius; // Rough edge
-                    let length = 50;
-                    
-                    while(length > 0) {
-                        const h = this.getHexAtPos(q, r);
-                        if(h) h.setWater();
-                        
-                        // Move towards opposite side roughly
-                        const dir = Rand.choice([{q:0,r:1}, {q:-1,r:1}, {q:1,r:0}]); // Generally down/right
-                        q += dir.q;
-                        r += dir.r;
-                        length--;
-                    }
-                }
-            }
+            getHexAtPos(q,r) { return this.grid.get(`${q},${r}`); }
 
             addColony(q,r,parent=null) {
                 const id = this.colonies.length;
@@ -747,7 +938,6 @@
                 this.colonies.push(c);
                 const h = this.grid.get(`${q},${r}`);
                 if(h) {
-                    if(h.type === 'WATER') h.reset(); // Don't spawn on water
                     h.setHive(id);
                 }
                 for(let i=0;i<8;i++) this.spawnBee(c,'WORKER');
@@ -764,22 +954,33 @@
                 
                 if(this.time >= CONFIG.DAY_LENGTH) {
                     this.time=0; this.dayCount++; 
-                    this.weather = Rand.chance(0.25)?'rain':'clear';
+                    const rainChance = (this.humidity / 100) * 0.4;
+                    this.weather = Rand.chance(rainChance)?'rain':'clear';
                     if(this.dayCount % 5 === 0) { this.seasonIdx = (this.seasonIdx + 1) % 4; this.updateSeasonUI(); }
                     
-                    // Record Pop History for Graphs
                     this.colonies.forEach(c => {
                         const pop = this.bees.filter(b => b.colony === c).length;
                         c.stats.popHistory.push(pop);
                         if(c.stats.popHistory.length > 10) c.stats.popHistory.shift();
                     });
                 }
-                this.isDay = this.time < CONFIG.DAY_LENGTH * 0.75;
+                
+                const seasonData = CONFIG.SEASONS[this.seasonIdx];
+                this.isDay = this.time < CONFIG.DAY_LENGTH * seasonData.dayRatio;
                 const hr = Math.floor((this.time/CONFIG.DAY_LENGTH)*24);
                 document.getElementById('time-display').innerText = `Day ${this.dayCount} | ${hr}:00 | ${this.weather=='rain'?'🌧️':'☀️'}`;
-                const seasonMod = CONFIG.SEASONS[this.seasonIdx].growthMod;
                 
-                this.grid.forEach(h => h.update(dt, this.isDay, this.weather, seasonMod));
+                this.grid.forEach(h => {
+                    const evt = h.update(dt, this.isDay, this.weather, seasonData.growthMod, this.humidity);
+                    if(evt === 'LANDSLIDE') {
+                        this.bees.forEach(b => {
+                             if(b.health > 0 && Math.hypot(b.pos.x - h.x, b.pos.y - h.y) < CONFIG.HEX_SIZE) {
+                                 b.die("Landslide");
+                             }
+                        });
+                    }
+                });
+                
                 this.colonies.forEach(c => {
                     c.update(dt, this);
                     if(this.isDay && c.food > CONFIG.SWARM_THRESHOLD_FOOD) {
@@ -804,6 +1005,7 @@
                 document.getElementById('season-icon').innerText = s.icon;
                 document.getElementById('season-name').innerText = s.name;
                 document.getElementById('season-desc').innerText = s.desc;
+                document.getElementById('day-night-tag').innerText = `Daylight: ${Math.round(s.dayRatio*100)}%`;
             }
 
             attemptSwarm(p) {
@@ -812,19 +1014,21 @@
                     const dq=Rand.int(-8,8), dr=Rand.int(-8,8);
                     if(Math.abs(dq)<4 && Math.abs(dr)<4) continue;
                     const h=this.getHexAtPos(pq+dq, pr+dr);
-                    if(h && h.type!=='HIVE' && h.type!=='POISON' && h.type !== 'WATER') { this.addColony(pq+dq, pr+dr, p); p.food -= 40; return; }
+                    if(h && h.type!=='HIVE' && h.type!=='POISON' && h.type !== 'WATER' && h.type !== 'OCEAN' && h.type !== 'MOUNTAIN') { 
+                        this.addColony(pq+dq, pr+dr, p); p.food -= 40; return; 
+                    }
                 }
             }
 
             draw() {
                 if(this.canvas.width!==window.innerWidth) this.resize();
-                this.ctx.fillStyle = CONFIG.COLORS.GRASS[2];
+                this.ctx.fillStyle = CONFIG.COLORS.DEEP_WATER; // Base ocean color
                 this.ctx.fillRect(0,0,this.width,this.height);
+                
                 this.ctx.save();
                 this.ctx.translate(this.width/2+this.camera.x, this.height/2+this.camera.y);
                 this.ctx.scale(this.camera.zoom, this.camera.zoom);
 
-                // Water Animation Phase
                 const waterPhase = Date.now() * 0.002;
 
                 this.grid.forEach(h => {
@@ -836,10 +1040,12 @@
                    }
                    this.ctx.closePath();
                    
-                   if(h.type==='WATER') {
-                       // Shimmer
+                   if(h.type==='OCEAN') {
+                       this.ctx.fillStyle = CONFIG.COLORS.DEEP_WATER;
+                       this.ctx.fill();
+                   } else if (h.type==='WATER') {
                        const shim = Math.sin(waterPhase + h.q * 0.5 + h.r * 0.5) * 20;
-                       this.ctx.fillStyle = `rgb(${70+shim}, ${190+shim}, ${240})`;
+                       this.ctx.fillStyle = `rgb(${2+shim}, ${136+shim}, ${209})`;
                        this.ctx.fill();
                    } else if(h.type==='HIVE') {
                        const c=this.colonies[h.colonyId];
@@ -854,6 +1060,12 @@
                            const r=s*h.flowerSize;
                            this.ctx.arc(h.x,h.y,r,0,Math.PI*2);
                            this.ctx.fillStyle=h.flowerColor;
+                           this.ctx.fill();
+                       }
+                       if(h.type==='MOUNTAIN') {
+                           this.ctx.beginPath();
+                           this.ctx.arc(h.x, h.y, s*0.4, 0, Math.PI*2);
+                           this.ctx.fillStyle = `rgba(255,255,255,${h.elevation/15})`;
                            this.ctx.fill();
                        }
                    }
@@ -916,7 +1128,7 @@
                     }
                 };
                 this.canvas.onmouseup=()=>isDrag=false;
-                this.canvas.onwheel=e=>{ this.camera.zoom=Math.max(0.5,Math.min(3,this.camera.zoom-e.deltaY*0.001)); };
+                this.canvas.onwheel=e=>{ this.camera.zoom=Math.max(0.1,Math.min(3,this.camera.zoom-e.deltaY*0.001)); };
             }
             useTool(cx,cy) {
                 const w=this.screenToWorld(cx,cy), h=this.getHexAt(w.x,w.y);
@@ -926,6 +1138,8 @@
                 if(this.activeTool==='fire') { if(h.type!=='HIVE') h.reset(); this.bees.forEach(b=>{if(Math.hypot(b.pos.x-w.x,b.pos.y-w.y)<25)b.takeDamage(10)}); }
                 if(this.activeTool==='rain' && (h.type==='FLOWER'||h.type==='POISON')) h.nectar=h.maxNectar;
                 if(this.activeTool==='colony' && h.type!=='HIVE' && h.type!=='WATER') this.addColony(h.q,h.r);
+                if(this.activeTool==='mountain' && h.type!=='HIVE') h.setMountain(5);
+                if(this.activeTool==='desert' && h.type!=='HIVE') h.setDesert();
             }
             screenToWorld(sx,sy) { return {x:(sx-this.width/2-this.camera.x)/this.camera.zoom, y:(sy-this.height/2-this.camera.y)/this.camera.zoom}; }
             getHexAt(x,y) { const q=(2/3*x)/CONFIG.HEX_SIZE, r=(-1/3*x+Math.sqrt(3)/3*y)/CONFIG.HEX_SIZE; return this.cubeRound(q,r,-q-r); }
@@ -961,10 +1175,15 @@
         function setSpeed(s) { world.isPaused = s === 0; if(!world.isPaused) world.speedMultiplier = s; document.getElementById('lbl-speed').innerText = s + 'x'; }
         function setTool(t) {
             world.activeTool = t; document.querySelectorAll('.tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === t));
-            const toolName = {cursor:'Select', flower:'Plant Flower', poison:'Plant Poison', colony:'Spawn Colony', rain:'Grow', fire:'Purge'}[t] || t;
+            const toolName = {cursor:'Select', flower:'Plant Flower', poison:'Plant Poison', colony:'Spawn Colony', rain:'Grow', fire:'Purge', mountain:'Raise Mountain', desert:'Make Desert'}[t] || t;
             document.getElementById('status-tool').innerText = toolName;
         }
-        function updateClimate(type, val) { if(type === 'temp') { world.temperature = parseInt(val); document.getElementById('val-temp').innerText = val + '°C'; } if(type === 'wind') { const v = parseInt(val); document.getElementById('val-wind').innerText = v; world.windX = v; world.windY = v * 0.5; } }
+        function updateClimate(type, val) { 
+            if(type === 'temp') { world.temperature = parseInt(val); document.getElementById('val-temp').innerText = val + '°C'; } 
+            if(type === 'wind') { const v = parseInt(val); document.getElementById('val-wind').innerText = v; world.windX = v; world.windY = v * 0.5; } 
+            if(type === 'humidity') { world.humidity = parseInt(val); document.getElementById('val-hum').innerText = val + '%'; }
+            if(type === 'pollution') { world.pollution = parseInt(val); document.getElementById('val-pol').innerText = val + '%'; }
+        }
         function toggleHeatmap() { world.heatmapMode = !world.heatmapMode; }
         
         function updateManagementControls() {
@@ -1002,7 +1221,6 @@
             let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
             history.forEach((y, x) => { sumX += x; sumY += y; sumXY += x*y; sumXX += x*x; });
             const slope = (n*sumXY - sumX*sumY) / (n*sumXX - sumX*sumX);
-            const intercept = (sumY - slope*sumX) / n;
             
             ctx.font = '10px monospace';
             ctx.fillStyle = '#aaa';
@@ -1038,6 +1256,16 @@
                     const isBan = score < -20;
                     brainHTML += `<div class="brain-row"><div style="display:flex; align-items:center;"><div class="color-swatch" style="background:${color}"></div>${isBan?'<span style="color:var(--danger)">BANNED</span>':'Safe'}</div><div class="score-bar-bg"><div class="score-bar-fill ${score<0?'neg':''}" style="width:${width}%"></div></div></div>`;
                 }
+                
+                // Add Terrain Preferences to Brain
+                const terrKnow = ent.terrainKnowledge;
+                 for(let terr in terrKnow) {
+                    const score = terrKnow[terr];
+                    const width = Math.min(100, Math.abs(score)*2);
+                    const isBan = score < -20;
+                    const emoji = terr==='DESERT'?'🏜️':(terr==='WATER'?'🌊':(terr==='MOUNTAIN'?'⛰️':'🌱'));
+                    brainHTML += `<div class="brain-row"><div style="display:flex; align-items:center;"><span style="margin-right:8px; font-size:12px;">${emoji} ${terr}</span>${isBan?'<span style="color:var(--danger)">AVOID</span>':''}</div><div class="score-bar-bg"><div class="score-bar-fill ${score<0?'neg':''}" style="width:${width}%"></div></div></div>`;
+                }
 
                 document.getElementById('inspector-content').innerHTML = `
                     <div style="color:${ent.palette.color}; font-weight:bold; font-size:18px; margin-bottom:4px;">${ent.palette.name}</div>
@@ -1057,6 +1285,9 @@
                             <div class="stat-item"><span class="stat-label">Poison</span><span class="stat-val">${ent.stats.deaths['Poison']}</span></div>
                             <div class="stat-item"><span class="stat-label">Overwork</span><span class="stat-val">${ent.stats.deaths['Overwork']}</span></div>
                              <div class="stat-item"><span class="stat-label">Drowned</span><span class="stat-val">${ent.stats.deaths['Drowned']}</span></div>
+                             <div class="stat-item"><span class="stat-label">Exhaustion</span><span class="stat-val">${ent.stats.deaths['Exhaustion']}</span></div>
+                             <div class="stat-item"><span class="stat-label">Pollution</span><span class="stat-val">${ent.stats.deaths['Pollution']}</span></div>
+                             <div class="stat-item"><span class="stat-label">Landslide</span><span class="stat-val">${ent.stats.deaths['Landslide']}</span></div>
                         </div>
                     </div>
                     
@@ -1079,6 +1310,7 @@
                          <label>Health <span class="val-display">${Math.floor(ent.health*100)}%</span></label>
                          <label>Trips Today <span class="val-display">${ent.tripsToday}</span></label>
                          <label>Water Fatigue <span class="val-display">${Math.floor(ent.waterTimer)}</span></label>
+                         <label>Desert Fatigue <span class="val-display">${Math.floor(ent.desertTimer)}</span></label>
                          <label>Current Task <span class="val-display">${ent.state}</span></label>
                     </div>
                 `;
